@@ -32,7 +32,8 @@ def get_opts():
     return [
         EnumVariable("linker", "Linker program", "default", ("default", "bfd", "gold", "lld", "mold")),
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
-        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", True),
+        BoolVariable("use_libcpp", "Use the LLVM libc++ standard library", False),
+        BoolVariable("use_static_cpp", "Link libgcc and libstdc++ / libc++ statically for better portability", True),
         BoolVariable("use_coverage", "Test Godot coverage", False),
         BoolVariable("use_ubsan", "Use LLVM/GCC compiler undefined behavior sanitizer (UBSAN)", False),
         BoolVariable("use_asan", "Use LLVM/GCC compiler address sanitizer (ASAN)", False),
@@ -69,6 +70,10 @@ def get_flags():
 
 
 def configure(env: "Environment"):
+    if env["use_libcpp"]:
+        env.Append(CXXFLAGS=["-stdlib=libc++"])
+        env.Append(LINKFLAGS=["-stdlib=libc++"])
+
     # Validate arch.
     supported_arches = ["x86_32", "x86_64", "arm32", "arm64", "rv64", "ppc32", "ppc64"]
     if env["arch"] not in supported_arches:
@@ -481,7 +486,15 @@ def configure(env: "Environment"):
 
     # Link those statically for portability
     if env["use_static_cpp"]:
-        env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
+        if env["use_libcpp"]:
+            # TODO: Get static linking with libc++ working here. For some reason it crashes on startup
+            # env.Append(LINKFLAGS=["-static"])
+            print("ERROR: Static linking with libcpp is not supported yet!")
+            exit(1)
+        else:
+            env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
+
+        # TODO: Not sure if this needs to be different for libc++
         if env["use_llvm"] and platform.system() != "FreeBSD":
             env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
 
