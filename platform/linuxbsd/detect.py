@@ -31,6 +31,18 @@ def get_opts():
 
     return [
         EnumVariable("linker", "Linker program", "default", ("default", "bfd", "gold", "lld", "mold")),
+        EnumVariable(
+            "llvm_stdlib", 
+            "The stdlib to use when compiling with llvm. See: https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-stdlib", 
+            "default", 
+            ("default", "libc++", "libstdc++", "platform")
+        ),
+        EnumVariable(
+            "llvm_stdlib", 
+            "The stdlib to use when compiling with llvm. See: https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-stdlib", 
+            "default", 
+            ("default", "libc++", "libstdc++", "platform")
+        ),
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
         BoolVariable("use_libcpp", "Use the LLVM libc++ standard library", False),
         BoolVariable("use_static_cpp", "Link libgcc and libstdc++ / libc++ statically for better portability", True),
@@ -70,9 +82,20 @@ def get_flags():
 
 
 def configure(env: "Environment"):
-    if env["use_libcpp"]:
-        env.Append(CXXFLAGS=["-stdlib=libc++"])
-        env.Append(LINKFLAGS=["-stdlib=libc++"])
+
+    if env["use_llvm"]:
+        env.Append(CXXFLAGS=[
+            "-stdlib=libc++",
+            "-I/usr/lib/llvm-17/include/c++/v1"
+            "-I/usr/lib/llvm-17/include",
+            "-I/usr/include/X11",
+            "-I/usr/include/X11/Xcursor",
+            "-I/usr/include/X11/extensions",
+            "-I/usr/include/alsa",
+            "-I/usr/include/pulse"
+            "-I/home/tcroc/godot_lib_deps/include"
+            "--no-standard-includes"])
+        env.Append(LINKFLAGS=["-stdlib=libc++", "-L/usr/lib/llvm-17/lib", "-L/home/tcroc/godot_lib_deps", "--rtlib=compiler-rt", "-unwindlib=libunwind", "--no-standard-libraries"])
 
     # Validate arch.
     supported_arches = ["x86_32", "x86_64", "arm32", "arm64", "rv64", "ppc32", "ppc64"]
@@ -479,22 +502,14 @@ def configure(env: "Environment"):
     host_is_64_bit = sys.maxsize > 2**32
     if host_is_64_bit and env["arch"] == "x86_32":
         env.Append(CCFLAGS=["-m32"])
-        env.Append(LINKFLAGS=["-m32", "-L/usr/lib/i386-linux-gnu"])
+        # env.Append(LINKFLAGS=["-m32", "-L/usr/lib/i386-linux-gnu"])
     elif not host_is_64_bit and env["arch"] == "x86_64":
         env.Append(CCFLAGS=["-m64"])
-        env.Append(LINKFLAGS=["-m64", "-L/usr/lib/i686-linux-gnu"])
+        # env.Append(LINKFLAGS=["-m64", "-L/usr/lib/i686-linux-gnu"])
 
     # Link those statically for portability
     if env["use_static_cpp"]:
-        if env["use_libcpp"]:
-            # TODO: Get static linking with libc++ working here. For some reason it crashes on startup
-            # env.Append(LINKFLAGS=["-static"])
-            print("ERROR: Static linking with libcpp is not supported yet!")
-            exit(1)
-        else:
-            env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
-
-        # TODO: Not sure if this needs to be different for libc++
+        env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
         if env["use_llvm"] and platform.system() != "FreeBSD":
             env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
 

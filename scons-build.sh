@@ -1,0 +1,1 @@
+scons platform=linuxbsd use_llvm=yes linker=lld debug_symbols=yes use_static_cpp=yes use_libcpp=yes
