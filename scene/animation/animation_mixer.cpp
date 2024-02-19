@@ -661,7 +661,7 @@ bool AnimationMixer::_update_caches() {
 				Ref<Resource> resource;
 				Vector<StringName> leftover_path;
 
-				if (!parent->has_node_and_resource(path)) {
+				if (!parent->get_node_and_resource(path, resource, leftover_path)) {
 					if (check_path) {
 						WARN_PRINT_ED(mixer_name + ": '" + String(E) + "', couldn't resolve track:  '" + String(path) + "'. This warning can be disabled in Project Settings.");
 					}
