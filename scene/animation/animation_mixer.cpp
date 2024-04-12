@@ -42,7 +42,6 @@
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/node_3d.h"
 #include "scene/3d/skeleton_3d.h"
-#include "scene/3d/skeleton_modifier_3d.h"
 #endif // _3D_DISABLED
 
 #ifdef TOOLS_ENABLED
@@ -485,6 +484,10 @@ void AnimationMixer::set_callback_mode_process(AnimationCallbackModeProcess p_mo
 	if (was_active) {
 		set_active(true);
 	}
+
+#ifdef TOOLS_ENABLED
+	emit_signal(SNAME("mixer_updated"));
+#endif // TOOLS_ENABLED
 }
 
 AnimationMixer::AnimationCallbackModeProcess AnimationMixer::get_callback_mode_process() const {
@@ -493,7 +496,9 @@ AnimationMixer::AnimationCallbackModeProcess AnimationMixer::get_callback_mode_p
 
 void AnimationMixer::set_callback_mode_method(AnimationCallbackModeMethod p_mode) {
 	callback_mode_method = p_mode;
+#ifdef TOOLS_ENABLED
 	emit_signal(SNAME("mixer_updated"));
+#endif // TOOLS_ENABLED
 }
 
 AnimationMixer::AnimationCallbackModeMethod AnimationMixer::get_callback_mode_method() const {
@@ -502,7 +507,9 @@ AnimationMixer::AnimationCallbackModeMethod AnimationMixer::get_callback_mode_me
 
 void AnimationMixer::set_callback_mode_discrete(AnimationCallbackModeDiscrete p_mode) {
 	callback_mode_discrete = p_mode;
+#ifdef TOOLS_ENABLED
 	emit_signal(SNAME("mixer_updated"));
+#endif // TOOLS_ENABLED
 }
 
 AnimationMixer::AnimationCallbackModeDiscrete AnimationMixer::get_callback_mode_discrete() const {
@@ -928,7 +935,6 @@ void AnimationMixer::_process_animation(double p_delta, bool p_update_only) {
 		_blend_process(p_delta, p_update_only);
 		_blend_apply();
 		_blend_post_process();
-		emit_signal(SNAME("mixer_applied"));
 	};
 	clear_animation_instances();
 }
@@ -2230,16 +2236,19 @@ void AnimationMixer::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("advance", "delta"), &AnimationMixer::advance);
 	GDVIRTUAL_BIND(_post_process_key_value, "animation", "track", "value", "object_id", "object_sub_idx");
 
-	/* ---- Capture feature ---- */
-	ClassDB::bind_method(D_METHOD("capture", "name", "duration", "trans_type", "ease_type"), &AnimationMixer::capture, DEFVAL(Tween::TRANS_LINEAR), DEFVAL(Tween::EASE_IN));
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deterministic"), "set_deterministic", "is_deterministic");
 
 	/* ---- Reset on save ---- */
 	ClassDB::bind_method(D_METHOD("set_reset_on_save_enabled", "enabled"), &AnimationMixer::set_reset_on_save_enabled);
 	ClassDB::bind_method(D_METHOD("is_reset_on_save_enabled"), &AnimationMixer::is_reset_on_save_enabled);
-
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "active"), "set_active", "is_active");
-	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "deterministic"), "set_deterministic", "is_deterministic");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "reset_on_save", PROPERTY_HINT_NONE, ""), "set_reset_on_save_enabled", "is_reset_on_save_enabled");
+
+	/* ---- Capture feature ---- */
+	ClassDB::bind_method(D_METHOD("capture", "name", "duration", "trans_type", "ease_type"), &AnimationMixer::capture, DEFVAL(Tween::TRANS_LINEAR), DEFVAL(Tween::EASE_IN));
+
+	ADD_SIGNAL(MethodInfo("mixer_updated")); // For updating dummy player.
+
 	ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "root_node"), "set_root_node", "get_root_node");
 
 	ADD_GROUP("Root Motion", "root_motion_");
@@ -2269,8 +2278,6 @@ void AnimationMixer::_bind_methods() {
 	ADD_SIGNAL(MethodInfo(SNAME("animation_finished"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
 	ADD_SIGNAL(MethodInfo(SNAME("animation_started"), PropertyInfo(Variant::STRING_NAME, "anim_name")));
 	ADD_SIGNAL(MethodInfo(SNAME("caches_cleared")));
-	ADD_SIGNAL(MethodInfo(SNAME("mixer_applied")));
-	ADD_SIGNAL(MethodInfo(SNAME("mixer_updated"))); // For updating dummy player.
 
 	ClassDB::bind_method(D_METHOD("_reset"), &AnimationMixer::reset);
 	ClassDB::bind_method(D_METHOD("_restore", "backup"), &AnimationMixer::restore);
