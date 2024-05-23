@@ -110,6 +110,9 @@ public:
 	virtual void set_max_fps(int p_fps);
 	virtual int get_max_fps() const;
 
+	virtual void set_fixed_fps(int p_fps);
+	virtual int get_fixed_fps();
+
 	virtual void set_audio_output_latency(int p_msec);
 	virtual int get_audio_output_latency() const;
 

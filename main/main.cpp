@@ -4321,3 +4321,11 @@ void Main::cleanup(bool p_force) {
 
 	OS::get_singleton()->finalize_core();
 }
+
+void Main::set_fixed_fps(int p_fps) {
+	fixed_fps = p_fps;
+}
+
+int Main::get_fixed_fps() {
+	return fixed_fps;
+}
