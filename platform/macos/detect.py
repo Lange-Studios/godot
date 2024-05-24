@@ -1,9 +1,9 @@
 import os
 import sys
-from methods import print_error, detect_darwin_sdk_path, get_compiler_version, is_vanilla_clang
-from platform_methods import detect_arch, detect_mvk
-
 from typing import TYPE_CHECKING
+
+from methods import detect_darwin_sdk_path, get_compiler_version, is_vanilla_clang, print_error
+from platform_methods import detect_arch, detect_mvk
 
 if TYPE_CHECKING:
     from SCons.Script.SConscript import SConsEnvironment
@@ -53,11 +53,11 @@ def get_doc_path():
 
 
 def get_flags():
-    return [
-        ("arch", detect_arch()),
-        ("use_volk", False),
-        ("supported", ["mono"]),
-    ]
+    return {
+        "arch": detect_arch(),
+        "use_volk": False,
+        "supported": ["mono"],
+    }
 
 
 def configure(env: "SConsEnvironment"):

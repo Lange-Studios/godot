@@ -190,7 +190,7 @@ public:
 	bool notify_frame_server_synced();
 
 	Engine();
-	virtual ~Engine() {}
+	virtual ~Engine();
 };
 
 #endif // ENGINE_H
