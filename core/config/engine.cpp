@@ -36,7 +36,6 @@
 #include "core/license.gen.h"
 #include "core/variant/typed_array.h"
 #include "core/version.h"
-#include "main/main.h"
 
 void Engine::set_physics_ticks_per_second(int p_ips) {
 	ERR_FAIL_COND_MSG(p_ips <= 0, "Engine iterations per second must be greater than 0.");
@@ -73,14 +72,6 @@ void Engine::set_max_fps(int p_fps) {
 
 int Engine::get_max_fps() const {
 	return _max_fps;
-}
-
-void Engine::set_fixed_fps(int p_fps) {
-	Main::set_fixed_fps(p_fps);
-}
-
-int Engine::get_fixed_fps() {
-	return Main::get_fixed_fps();
 }
 
 void Engine::set_audio_output_latency(int p_msec) {

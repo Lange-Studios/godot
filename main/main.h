@@ -86,9 +86,6 @@ public:
 	static bool is_iterating();
 
 	static void cleanup(bool p_force = false);
-
-	static void set_fixed_fps(int fixed_fps);
-	static int get_fixed_fps();
 };
 
 // Test main override is for the testing behavior.
