@@ -325,8 +325,27 @@ namespace GodotTools.Export
                                 {
                                     if (platform == OS.Platforms.Android)
                                     {
-                                        if (IsSharedObject(Path.GetFileName(path)))
+                                        var fileName = Path.GetFileName(path);
+                                        if (IsSharedObject(fileName))
                                         {
+                                            if (fileName.EndsWith(".jar"))
+                                            {
+                                                // Don't export the same dotnet jar twice. Otherwise we will have conflicts. This
+                                                // can happen when exporting for multiple architectures. The jars exported from
+                                                // godot for dotnet can be found in .godot/mono/temp/bin/Export[Debug|Release].
+                                                // If you compare the bytecode with AndroidStudio or IntelliJ, you will find that
+                                                // they are identical. Hence why we can only export one.
+                                                //
+                                                // Gradle does not distinguish jars between abi folders like it does with .so files. It will
+                                                // try to compile both into the application if they are both exported.
+                                                if (exportedJars.Contains(fileName))
+                                                {
+                                                    return;
+                                                }
+
+                                                exportedJars.Add(fileName);
+                                            }
+
                                             AddSharedObject(path, tags: new string[] { arch },
                                                 Path.Join(projectDataDirName,
                                                     Path.GetRelativePath(publishOutputDir,
