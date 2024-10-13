@@ -117,7 +117,7 @@ for x in sorted(glob.glob("platform/*")):
         platform_exporters.append(platform_name)
     if os.path.exists(x + "/api/api.cpp"):
         platform_apis.append(platform_name)
-    if os.getenv("GODOT_CAN_BUILD_" + x.removeprefix("platform/").upper()) or detect.can_build():
+    if os.getenv("GODOT_CAN_BUILD_" + platform_name.upper()) or detect.can_build():
         x = x.replace("platform/", "")  # rest of world
         x = x.replace("platform\\", "")  # win32
         platform_list += [x]
@@ -314,7 +314,7 @@ opts.Add("AS", "Assembler binary")
 opts.Add("AR", "Archiver binary")
 opts.Add("RANLIB", "Ranlib binary")
 opts.Add("RC", "Resource compiler binary")
-# Set this to something like "${TEMPFILE('$AR rcs $TARGET $SOURCES','$ARCOMSTR')}" if you get errors related to a command being too long. 
+# Set this to something like "${TEMPFILE('$AR rcs $TARGET $SOURCES','$ARCOMSTR')}" if you get errors related to a command being too long.
 # This is a common error on Windows machines.
 opts.Add("ARCOM", "Custom command used to generate an object file from an assembly-language source file.")
 opts.Add("cppdefines", "Custom defines for the pre-processor")

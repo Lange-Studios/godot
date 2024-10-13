@@ -269,7 +269,7 @@ def build_res_file(target, source, env: "SConsEnvironment"):
         cmdbase += " --include-dir . --target=" + arch_aliases[env["arch"]]
     else:
         # rc doesn't seem to have a target architecture arg.  So not passing.
-        cmdbase += " /i ."
+        cmdbase += " /nologo /i ."
 
     for x in range(len(source)):
         ok = True
@@ -376,8 +376,10 @@ def setup_mingw(env: "SConsEnvironment"):
         )
         sys.exit(255)
 
-    if env["platform_tools"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
-        "clang --version", env["mingw_prefix"], env["arch"]
+    if (
+        env["platform_tools"]
+        and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"])
+        and not try_cmd("clang --version", env["mingw_prefix"], env["arch"])
     ):
         print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
         sys.exit(255)
@@ -802,6 +804,7 @@ def configure_mingw(env: "SConsEnvironment"):
             env["CXX"] = mingw_bin_prefix + "clang++"
             if try_cmd("as --version", env["mingw_prefix"], env["arch"]):
                 env["AS"] = mingw_bin_prefix + "as"
+                env.Append(ASFLAGS=["-c"])
             if try_cmd("ar --version", env["mingw_prefix"], env["arch"]):
                 env["AR"] = mingw_bin_prefix + "ar"
             if try_cmd("ranlib --version", env["mingw_prefix"], env["arch"]):
