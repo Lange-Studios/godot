@@ -216,6 +216,14 @@ DisplayServer::ScreenOrientation DisplayServerAndroid::screen_get_orientation(in
 	return (ScreenOrientation)orientation;
 }
 
+int DisplayServerAndroid::screen_get_internal_current_rotation(int p_screen) const {
+	GodotIOJavaWrapper *godot_io_java = OS_Android::get_singleton()->get_godot_io_java();
+	ERR_FAIL_NULL_V(godot_io_java, 0);
+
+	const int rotation = godot_io_java->get_internal_current_screen_rotation();
+	return rotation;
+}
+
 int DisplayServerAndroid::get_screen_count() const {
 	return 1;
 }
@@ -387,6 +395,14 @@ int64_t DisplayServerAndroid::window_get_native_handle(HandleType p_handle_type,
 			if (rendering_driver == "opengl3") {
 				return reinterpret_cast<int64_t>(eglGetCurrentContext());
 			}
+			return 0;
+		}
+		case EGL_DISPLAY: {
+			// @todo Find a way to get this from the Java side.
+			return 0;
+		}
+		case EGL_CONFIG: {
+			// @todo Find a way to get this from the Java side.
 			return 0;
 		}
 #endif

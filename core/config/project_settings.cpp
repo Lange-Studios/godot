@@ -515,9 +515,9 @@ void ProjectSettings::_convert_to_last_version(int p_from_version) {
 				Dictionary action = E.value.variant;
 				Array events = action["events"];
 				for (int i = 0; i < events.size(); i++) {
-					Ref<InputEvent> x = events[i];
-					if (x->get_device() == -1) { // -1 was the previous value (GH-97707).
-						x->set_device(InputEvent::DEVICE_ID_ALL_DEVICES);
+					Ref<InputEvent> ev = events[i];
+					if (ev.is_valid() && ev->get_device() == -1) { // -1 was the previous value (GH-97707).
+						ev->set_device(InputEvent::DEVICE_ID_ALL_DEVICES);
 					}
 				}
 			}
@@ -1503,6 +1503,10 @@ ProjectSettings::ProjectSettings() {
 	GLOBAL_DEF("display/window/subwindows/embed_subwindows", true);
 	// Keep the enum values in sync with the `DisplayServer::VSyncMode` enum.
 	custom_prop_info["display/window/vsync/vsync_mode"] = PropertyInfo(Variant::INT, "display/window/vsync/vsync_mode", PROPERTY_HINT_ENUM, "Disabled,Enabled,Adaptive,Mailbox");
+
+	GLOBAL_DEF("display/window/frame_pacing/android/enable_frame_pacing", true);
+	GLOBAL_DEF(PropertyInfo(Variant::INT, "display/window/frame_pacing/android/swappy_mode", PROPERTY_HINT_ENUM, "pipeline_forced_on,auto_fps_pipeline_forced_on,auto_fps_auto_pipeline"), 2);
+
 	custom_prop_info["rendering/driver/threads/thread_model"] = PropertyInfo(Variant::INT, "rendering/driver/threads/thread_model", PROPERTY_HINT_ENUM, "Single-Unsafe,Single-Safe,Multi-Threaded");
 	GLOBAL_DEF("physics/2d/run_on_separate_thread", false);
 	GLOBAL_DEF("physics/3d/run_on_separate_thread", false);
