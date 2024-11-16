@@ -1800,13 +1800,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		} else if (arg == "--" || arg == "++") {
 			adding_user_args = true;
 		} else {
-			if (!FileAccess::exists(arg) && !DirAccess::exists(arg)) {
-				// Warn if the argument isn't recognized by Godot *and* the file/folder
-				// specified by a positional argument doesn't exist.
-				// This allows projects to read file or folder paths as a positional argument
-				// without printing a warning, as this scenario can't make use of user command line arguments.
-				WARN_PRINT(vformat("Unknown command line argument \"%s\". User arguments should be passed after a -- or ++ separator, e.g. \"-- %s\".", arg, arg));
-			}
 			main_args.push_back(arg);
 		}
 
@@ -2553,7 +2546,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 	Engine::get_singleton()->set_physics_ticks_per_second(GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "physics/common/physics_ticks_per_second", PROPERTY_HINT_RANGE, "1,1000,1"), 60));
 	Engine::get_singleton()->set_max_physics_steps_per_frame(GLOBAL_DEF_BASIC(PropertyInfo(Variant::INT, "physics/common/max_physics_steps_per_frame", PROPERTY_HINT_RANGE, "1,100,1"), 8));
 	Engine::get_singleton()->set_physics_jitter_fix(GLOBAL_DEF("physics/common/physics_jitter_fix", 0.5));
-	Engine::get_singleton()->set_max_fps(GLOBAL_DEF(PropertyInfo(Variant::INT, "application/run/max_fps", PROPERTY_HINT_RANGE, "0,1000,1"), 0));
 
 	GLOBAL_DEF_RST(PropertyInfo(Variant::INT, "audio/driver/output_latency", PROPERTY_HINT_RANGE, "1,100,1"), 15);
 	// Use a safer default output_latency for web to avoid audio cracking on low-end devices, especially mobile.
@@ -2573,10 +2565,6 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 #if defined(MACOS_ENABLED) || defined(IOS_ENABLED)
 	OS::get_singleton()->set_environment("MVK_CONFIG_LOG_LEVEL", OS::get_singleton()->_verbose_stdout ? "3" : "1"); // 1 = Errors only, 3 = Info
 #endif
-
-	if (max_fps >= 0) {
-		Engine::get_singleton()->set_max_fps(max_fps);
-	}
 
 	if (frame_delay == 0) {
 		frame_delay = GLOBAL_DEF(PropertyInfo(Variant::INT, "application/run/frame_delay_msec", PROPERTY_HINT_RANGE, "0,100,1,or_greater"), 0);
@@ -3021,6 +3009,13 @@ Error Main::setup2(bool p_show_boot_logo) {
 		}
 
 		OS::get_singleton()->benchmark_end_measure("Servers", "Display");
+	}
+
+	// Max FPS needs to be set after the DisplayServer is created.
+	Engine::get_singleton()->set_max_fps(GLOBAL_DEF(PropertyInfo(Variant::INT, "application/run/max_fps", PROPERTY_HINT_RANGE, "0,1000,1"), 0));
+
+	if (max_fps >= 0) {
+		Engine::get_singleton()->set_max_fps(max_fps);
 	}
 
 #ifdef TOOLS_ENABLED
