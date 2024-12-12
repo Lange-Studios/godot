@@ -329,6 +329,8 @@ private:
 
 	struct Lightmap {
 		RID light_texture;
+		RID shadow_texture;
+		RS::ShadowmaskMode shadowmask_mode = RS::SHADOWMASK_MODE_NONE;
 		bool uses_spherical_harmonics = false;
 		bool interior = false;
 		AABB bounds = AABB(Vector3(), Vector3(1, 1, 1));
@@ -355,6 +357,8 @@ private:
 	float lightmap_probe_capture_update_speed = 4;
 
 	mutable RID_Owner<Lightmap, true> lightmap_owner;
+
+	Vector<RID> shadowmask_textures;
 
 	/* LIGHTMAP INSTANCE */
 
@@ -799,6 +803,16 @@ public:
 	RID get_spot_light_buffer() { return spot_light_buffer; }
 	RID get_directional_light_buffer() { return directional_light_buffer; }
 	uint32_t get_max_directional_lights() { return max_directional_lights; }
+	uint32_t get_directional_light_blend_splits(uint32_t p_directional_light_count) const {
+		uint32_t blend_splits = 0;
+		for (uint32_t i = 0; i < p_directional_light_count; i++) {
+			if (directional_lights[i].blend_splits) {
+				blend_splits |= 1U << i;
+			}
+		}
+
+		return blend_splits;
+	}
 	bool has_directional_shadows(const uint32_t p_directional_light_count) {
 		for (uint32_t i = 0; i < p_directional_light_count; i++) {
 			if (directional_lights[i].shadow_opacity > 0.001) {
@@ -975,6 +989,10 @@ public:
 
 	Dependency *lightmap_get_dependency(RID p_lightmap) const;
 
+	virtual void lightmap_set_shadowmask_textures(RID p_lightmap, RID p_shadow) override;
+	virtual RS::ShadowmaskMode lightmap_get_shadowmask_mode(RID p_lightmap) override;
+	virtual void lightmap_set_shadowmask_mode(RID p_lightmap, RS::ShadowmaskMode p_mode) override;
+
 	virtual float lightmap_get_probe_capture_update_speed() const override {
 		return lightmap_probe_capture_update_speed;
 	}
@@ -1015,6 +1033,12 @@ public:
 	_FORCE_INLINE_ const Vector<RID> &lightmap_array_get_textures() const {
 		ERR_FAIL_COND_V(!using_lightmap_array, lightmap_textures); //only for arrays
 		return lightmap_textures;
+	}
+
+	_FORCE_INLINE_ RID shadowmask_get_texture(RID p_lightmap) const {
+		const Lightmap *lm = lightmap_owner.get_or_null(p_lightmap);
+		ERR_FAIL_NULL_V(lm, RID());
+		return lm->shadow_texture;
 	}
 
 	/* LIGHTMAP INSTANCE */
