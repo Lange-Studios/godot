@@ -411,9 +411,9 @@ void StyleBoxFlat::draw(RID p_canvas_item, const Rect2 &p_rect) const {
 
 	Rect2 border_style_rect = style_rect;
 
-	float aa_size_scaled = 1.0f;
+	real_t aa_size_scaled = 1.0f;
 	if (aa_on) {
-		float scale_factor = 1.0f;
+		real_t scale_factor = 1.0f;
 		const SceneTree *tree = Object::cast_to<SceneTree>(OS::get_singleton()->get_main_loop());
 		if (tree) {
 			const Window *window = tree->get_root();
