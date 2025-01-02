@@ -200,7 +200,6 @@ def get_opts():
         BoolVariable("debug_crt", "Compile with MSVC's debug CRT (/MDd)", False),
         BoolVariable("incremental_link", "Use MSVC incremental linking. May increase or decrease build times.", False),
         BoolVariable("silence_msvc", "Silence MSVC's cl/link stdout bloat, redirecting any errors to stderr.", True),
-        BoolVariable("use_windres", "Use the windres compiler, even if Microsoft's rc is installed", True),
         ("angle_libs", "Path to the ANGLE static libraries", ""),
         # Direct3D 12 support.
         (
@@ -321,7 +320,7 @@ def setup_mingw(env: "SConsEnvironment"):
         )
         sys.exit(255)
 
-    if env["platform_tools"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
+    if not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
         "clang --version", env["mingw_prefix"], env["arch"]
     ):
         print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
@@ -697,10 +696,10 @@ def configure_mingw(env: "SConsEnvironment"):
 
     ## Build type
 
-    if env["platform_tools"] and not env["use_llvm"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]):
+    if not env["use_llvm"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]):
         env["use_llvm"] = True
 
-    if env["platform_tools"] and env["use_llvm"] and not try_cmd("clang --version", env["mingw_prefix"], env["arch"]):
+    if env["use_llvm"] and not try_cmd("clang --version", env["mingw_prefix"], env["arch"]):
         env["use_llvm"] = False
 
     if not env["use_llvm"] and try_cmd("gcc --version", env["mingw_prefix"], env["arch"], True):
@@ -736,36 +735,19 @@ def configure_mingw(env: "SConsEnvironment"):
     env.Append(CCFLAGS=["-ffp-contract=off"])
 
     if env["use_llvm"]:
-        env["CC"] = mingw_bin_prefix + "clang"
-        env["CXX"] = mingw_bin_prefix + "clang++"
-        if try_cmd("as --version", env["mingw_prefix"], env["arch"]):
-            env["AS"] = mingw_bin_prefix + "as"
-            env.Append(ASFLAGS=["-c"])
-        if try_cmd("ar --version", env["mingw_prefix"], env["arch"]):
-            env["AR"] = mingw_bin_prefix + "ar"
-        if try_cmd("ranlib --version", env["mingw_prefix"], env["arch"]):
-            env["RANLIB"] = mingw_bin_prefix + "ranlib"
+        env["CC"] = get_detected(env, "clang")
+        env["CXX"] = get_detected(env, "clang++")
+        env["AR"] = get_detected(env, "ar")
+        env["RANLIB"] = get_detected(env, "ranlib")
+        env.Append(ASFLAGS=["-c"])
         env.extra_suffix = ".llvm" + env.extra_suffix
+    else:
+        env["CC"] = get_detected(env, "gcc")
+        env["CXX"] = get_detected(env, "g++")
+        env["AR"] = get_detected(env, "gcc-ar" if os.name != "nt" else "ar")
+        env["RANLIB"] = get_detected(env, "gcc-ranlib")
 
-    if env["platform_tools"]:
-        if env["use_llvm"]:
-            env["CC"] = get_detected(env, "clang")
-            env["CXX"] = get_detected(env, "clang++")
-            env["AR"] = get_detected(env, "ar")
-            env["RANLIB"] = get_detected(env, "ranlib")
-            env.Append(ASFLAGS=["-c"])
-            env.extra_suffix = ".llvm" + env.extra_suffix
-        else:
-            env["CC"] = get_detected(env, "gcc")
-            env["CXX"] = get_detected(env, "g++")
-            env["AR"] = get_detected(env, "gcc-ar" if os.name != "nt" else "ar")
-            env["RANLIB"] = get_detected(env, "gcc-ranlib")
-
-        env["RC"] = get_detected(env, "windres")
-        env["AS"] = get_detected(env, "as")
-        env["OBJCOPY"] = get_detected(env, "objcopy")
-        env["STRIP"] = get_detected(env, "strip")
-
+    env["RC"] = get_detected(env, "windres")
     ARCH_TARGETS = {
         "x86_32": "pe-i386",
         "x86_64": "pe-x86-64",
@@ -773,6 +755,10 @@ def configure_mingw(env: "SConsEnvironment"):
         "arm64": "aarch64-w64-mingw32",
     }
     env.AppendUnique(RCFLAGS=f"--target={ARCH_TARGETS[env['arch']]}")
+
+    env["AS"] = get_detected(env, "as")
+    env["OBJCOPY"] = get_detected(env, "objcopy")
+    env["STRIP"] = get_detected(env, "strip")
 
     ## LTO
 

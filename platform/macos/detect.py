@@ -106,7 +106,7 @@ def configure(env: "SConsEnvironment"):
     if ccache_path != "":
         ccache_path = ccache_path + " "
 
-    if env["platform_tools"] and not "osxcross" in env:  # regular native build
+    if not "osxcross" in env:  # regular native build
         if env["macports_clang"] != "no":
             mpprefix = os.environ.get("MACPORTS_PREFIX", "/opt/local")
             mpclangver = env["macports_clang"]
