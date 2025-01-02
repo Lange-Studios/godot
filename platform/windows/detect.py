@@ -736,6 +736,15 @@ def configure_mingw(env: "SConsEnvironment"):
     env.Append(CCFLAGS=["-ffp-contract=off"])
 
     if env["use_llvm"]:
+        env["CC"] = mingw_bin_prefix + "clang"
+        env["CXX"] = mingw_bin_prefix + "clang++"
+        if try_cmd("as --version", env["mingw_prefix"], env["arch"]):
+            env["AS"] = mingw_bin_prefix + "as"
+            env.Append(ASFLAGS=["-c"])
+        if try_cmd("ar --version", env["mingw_prefix"], env["arch"]):
+            env["AR"] = mingw_bin_prefix + "ar"
+        if try_cmd("ranlib --version", env["mingw_prefix"], env["arch"]):
+            env["RANLIB"] = mingw_bin_prefix + "ranlib"
         env.extra_suffix = ".llvm" + env.extra_suffix
 
     if env["platform_tools"]:
