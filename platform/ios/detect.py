@@ -162,6 +162,7 @@ def configure(env: "SConsEnvironment"):
         env.Prepend(
             CPPPATH=[
                 "$IOS_SDK_PATH/System/Library/Frameworks/Metal.framework/Headers",
+                "$IOS_SDK_PATH/System/Library/Frameworks/MetalFX.framework/Headers",
                 "$IOS_SDK_PATH/System/Library/Frameworks/QuartzCore.framework/Headers",
             ]
         )
