@@ -299,6 +299,25 @@ opts.Add("rcflags", "Custom flags for Windows resource compiler")
 # in following code (especially platform and custom_modules).
 opts.Update(env)
 
+# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
+# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
+# ahead of time with native validator/converter functions.
+tmppath = "./platform/" + env["platform"]
+sys.path.insert(0, tmppath)
+import detect
+
+if env["platform_tools"]:
+    custom_tools = ["default"]
+    try:  # Platform custom tools are optional
+        custom_tools = detect.get_tools(env)
+    except AttributeError:
+        pass
+    for tool in custom_tools:
+        env.Tool(tool)
+else:
+    env.Tool("default")
+    opts.Update(env)
+
 # Setup caching logic early to catch everything.
 methods.prepare_cache(env)
 
@@ -428,23 +447,6 @@ env.modules_detected = modules_detected
 # Update the environment again after all the module options are added.
 opts.Update(env, {**ARGUMENTS, **env.Dictionary()})
 Help(opts.GenerateHelpText(env))
-
-
-# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
-# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
-# ahead of time with native validator/converter functions.
-tmppath = "./platform/" + env["platform"]
-sys.path.insert(0, tmppath)
-import detect
-
-custom_tools = ["default"]
-try:  # Platform custom tools are optional
-    custom_tools = detect.get_tools(env)
-except AttributeError:
-    pass
-for tool in custom_tools:
-    env.Tool(tool)
-
 
 # add default include paths
 
