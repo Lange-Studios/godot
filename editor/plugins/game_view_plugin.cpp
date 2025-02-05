@@ -223,7 +223,7 @@ void GameView::_instance_starting(int p_idx, List<String> &r_arguments) {
 	if (!is_feature_enabled) {
 		return;
 	}
-	if (p_idx == 0 && embed_on_play && make_floating_on_play && !window_wrapper->get_window_enabled() && EditorNode::get_singleton()->is_multi_window_enabled() && _get_embed_available() == EMBED_AVAILABLE) {
+	if (p_idx == 0 && embed_on_play && make_floating_on_play && !window_wrapper->get_window_enabled() && _get_embed_available() == EMBED_AVAILABLE) {
 		// Set the Floating Window default title. Always considered in DEBUG mode, same as in Window::set_title.
 		String appname = GLOBAL_GET("application/config/name");
 		appname = vformat("%s (DEBUG)", TranslationServer::get_singleton()->translate(appname));
@@ -401,11 +401,17 @@ void GameView::_embed_options_menu_menu_id_pressed(int p_id) {
 	switch (p_id) {
 		case EMBED_RUN_GAME_EMBEDDED: {
 			embed_on_play = !embed_on_play;
-			EditorSettings::get_singleton()->set_project_metadata("game_view", "embed_on_play", embed_on_play);
+			int game_mode = EDITOR_GET("run/window_placement/game_embed_mode");
+			if (game_mode == 0) { // Save only if not overridden by editor.
+				EditorSettings::get_singleton()->set_project_metadata("game_view", "embed_on_play", embed_on_play);
+			}
 		} break;
 		case EMBED_MAKE_FLOATING_ON_PLAY: {
 			make_floating_on_play = !make_floating_on_play;
-			EditorSettings::get_singleton()->set_project_metadata("game_view", "make_floating_on_play", make_floating_on_play);
+			int game_mode = EDITOR_GET("run/window_placement/game_embed_mode");
+			if (game_mode == 0) { // Save only if not overridden by editor.
+				EditorSettings::get_singleton()->set_project_metadata("game_view", "make_floating_on_play", make_floating_on_play);
+			}
 		} break;
 	}
 	_update_embed_menu_options();
@@ -422,6 +428,9 @@ void GameView::_size_mode_button_pressed(int size_mode) {
 GameView::EmbedAvailability GameView::_get_embed_available() {
 	if (!DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_WINDOW_EMBEDDING)) {
 		return EMBED_NOT_AVAILABLE_FEATURE_NOT_SUPPORTED;
+	}
+	if (!EditorNode::get_singleton()->is_multi_window_enabled()) {
+		return EMBED_NOT_AVAILABLE_SINGLE_WINDOW_MODE;
 	}
 
 	EditorRun::WindowPlacement placement = EditorRun::get_window_placement();
@@ -477,6 +486,9 @@ void GameView::_update_ui() {
 		case EMBED_NOT_AVAILABLE_FULLSCREEN:
 			state_label->set_text(TTR("Game embedding not available when the game starts in fullscreen.\nConsider overriding the window mode project setting with the editor feature tag to Windowed to use game embedding while leaving the exported project intact."));
 			break;
+		case EMBED_NOT_AVAILABLE_SINGLE_WINDOW_MODE:
+			state_label->set_text(TTR("Game embedding not available in single window mode."));
+			break;
 	}
 
 	if (available == EMBED_AVAILABLE) {
@@ -495,8 +507,7 @@ void GameView::_update_embed_menu_options() {
 	menu->set_item_checked(menu->get_item_index(EMBED_RUN_GAME_EMBEDDED), embed_on_play);
 	menu->set_item_checked(menu->get_item_index(EMBED_MAKE_FLOATING_ON_PLAY), make_floating_on_play);
 
-	// When embed is Off or in single window mode, Make floating is not available.
-	menu->set_item_disabled(menu->get_item_index(EMBED_MAKE_FLOATING_ON_PLAY), !embed_on_play || !EditorNode::get_singleton()->is_multi_window_enabled());
+	menu->set_item_disabled(menu->get_item_index(EMBED_MAKE_FLOATING_ON_PLAY), !embed_on_play);
 
 	fixed_size_button->set_pressed(embed_size_mode == SIZE_MODE_FIXED);
 	keep_aspect_button->set_pressed(embed_size_mode == SIZE_MODE_KEEP_ASPECT);
@@ -585,9 +596,27 @@ void GameView::_notification(int p_what) {
 		case NOTIFICATION_READY: {
 			if (DisplayServer::get_singleton()->has_feature(DisplayServer::FEATURE_WINDOW_EMBEDDING)) {
 				// Embedding available.
-				embed_on_play = EditorSettings::get_singleton()->get_project_metadata("game_view", "embed_on_play", true);
-				make_floating_on_play = EditorSettings::get_singleton()->get_project_metadata("game_view", "make_floating_on_play", true);
+				int game_mode = EDITOR_GET("run/window_placement/game_embed_mode");
+				switch (game_mode) {
+					case 1: { // Embed.
+						embed_on_play = true;
+						make_floating_on_play = false;
+					} break;
+					case 2: { // Floating.
+						embed_on_play = true;
+						make_floating_on_play = true;
+					} break;
+					case 3: { // Disabled.
+						embed_on_play = false;
+						make_floating_on_play = false;
+					} break;
+					default: {
+						embed_on_play = EditorSettings::get_singleton()->get_project_metadata("game_view", "embed_on_play", true);
+						make_floating_on_play = EditorSettings::get_singleton()->get_project_metadata("game_view", "make_floating_on_play", true);
+					} break;
+				}
 				embed_size_mode = (EmbedSizeMode)(int)EditorSettings::get_singleton()->get_project_metadata("game_view", "embed_size_mode", SIZE_MODE_FIXED);
+				keep_aspect_button->set_pressed(EditorSettings::get_singleton()->get_project_metadata("game_view", "keep_aspect", true));
 				_update_embed_menu_options();
 
 				EditorRunBar::get_singleton()->connect("play_pressed", callable_mp(this, &GameView::_play_pressed));
