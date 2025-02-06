@@ -327,14 +327,6 @@ namespace GodotTools.Export
                                     {
                                         string fileName = Path.GetFileName(path);
 
-                                        if (fileName.EndsWith(".jar"))
-                                        {
-                                            // We exclude jar files from the export since they should
-                                            // already be included in the Godot templates, adding them
-                                            // again would cause conflicts.
-                                            return;
-                                        }
-
                                         if (IsSharedObject(fileName))
                                         {
                                             AddSharedObject(path, tags: new string[] { arch },
@@ -347,8 +339,17 @@ namespace GodotTools.Export
 
                                         bool IsSharedObject(string fileName)
                                         {
-                                            if (fileName.EndsWith(".so") || fileName.EndsWith(".a")
-                                             || fileName.EndsWith(".dex"))
+                                            if (fileName.EndsWith(".jar"))
+                                            {
+                                                // Don't export the same jar twice. Otherwise we will have conflicts.
+                                                // This can happen when exporting for multiple architectures. Dotnet
+                                                // stores the jars in .godot/mono/temp/bin/Export[Debug|Release] per
+                                                // target architecture. Jars are cpu agnostic so only 1 is needed.
+                                                var jarName = Path.GetFileName(fileName);
+                                                return exportedJars.Add(jarName);
+                                            }
+
+                                            if (fileName.EndsWith(".so") || fileName.EndsWith(".a") || fileName.EndsWith(".dex"))
                                             {
                                                 return true;
                                             }
