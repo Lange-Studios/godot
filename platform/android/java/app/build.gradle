@@ -71,7 +71,6 @@ dependencies {
 
     // .NET dependencies
     String jar = '../../../../modules/mono/thirdparty/libSystem.Security.Cryptography.Native.Android.jar'
-    monoImplementation fileTree(dir: 'monoLibs', include: ['*.jar'])
     if (file(jar).exists()) {
         monoImplementation files(jar)
     }
