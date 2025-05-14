@@ -942,7 +942,7 @@ def configure(env: "SConsEnvironment"):
     # At this point the env has been set up with basic tools/compilers.
     env.Prepend(CPPPATH=["#platform/windows"])
 
-    env.msvc = "mingw" not in env["TOOLS"]
+    env.msvc = "mingw" not in env["TOOLS"] and not env.get("use_mingw")
     if env.msvc:
         configure_msvc(env)
     else:
