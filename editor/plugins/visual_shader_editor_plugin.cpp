@@ -35,6 +35,7 @@
 #include "core/math/math_defs.h"
 #include "core/object/class_db.h"
 #include "core/os/keyboard.h"
+#include "core/version_generated.gen.h"
 #include "editor/editor_node.h"
 #include "editor/editor_properties.h"
 #include "editor/editor_properties_vector.h"
@@ -80,17 +81,17 @@ struct FloatConstantDef {
 };
 
 static FloatConstantDef float_constant_defs[] = {
-	{ "E", Math_E, TTRC("E constant (2.718282). Represents the base of the natural logarithm.") },
+	{ "E", Math::E, TTRC("E constant (2.718282). Represents the base of the natural logarithm.") },
 	{ "Epsilon", CMP_EPSILON, TTRC("Epsilon constant (0.00001). Smallest possible scalar number.") },
 	{ "Phi", 1.618034f, TTRC("Phi constant (1.618034). Golden ratio.") },
-	{ "Pi/4", Math_PI / 4, TTRC("Pi/4 constant (0.785398) or 45 degrees.") },
-	{ "Pi/2", Math_PI / 2, TTRC("Pi/2 constant (1.570796) or 90 degrees.") },
-	{ "Pi", Math_PI, TTRC("Pi constant (3.141593) or 180 degrees.") },
-	{ "Tau", Math_TAU, TTRC("Tau constant (6.283185) or 360 degrees.") },
-	{ "Sqrt2", Math_SQRT2, TTRC("Sqrt2 constant (1.414214). Square root of 2.") }
+	{ "Pi/4", Math::PI / 4, TTRC("Pi/4 constant (0.785398) or 45 degrees.") },
+	{ "Pi/2", Math::PI / 2, TTRC("Pi/2 constant (1.570796) or 90 degrees.") },
+	{ "Pi", Math::PI, TTRC("Pi constant (3.141593) or 180 degrees.") },
+	{ "Tau", Math::TAU, TTRC("Tau constant (6.283185) or 360 degrees.") },
+	{ "Sqrt2", Math::SQRT2, TTRC("Sqrt2 constant (1.414214). Square root of 2.") }
 };
 
-const int MAX_FLOAT_CONST_DEFS = sizeof(float_constant_defs) / sizeof(FloatConstantDef);
+constexpr int MAX_FLOAT_CONST_DEFS = std::size(float_constant_defs);
 
 ///////////////////
 
@@ -762,6 +763,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 
 		// Add hint label.
 		Label *frame_hint_label = memnew(Label);
+		frame_hint_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 		node->add_child(frame_hint_label);
 		frame_hint_label->set_horizontal_alignment(HorizontalAlignment::HORIZONTAL_ALIGNMENT_CENTER);
 		frame_hint_label->set_vertical_alignment(VerticalAlignment::VERTICAL_ALIGNMENT_CENTER);
@@ -878,6 +880,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 			String prop_name = dp.name.strip_edges();
 			if (!prop_name.is_empty()) {
 				Label *label = memnew(Label);
+				label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 				label->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED); // TODO: Implement proper translation switch.
 				label->set_text(prop_name + ":");
 				hbox->add_child(label);
@@ -1151,6 +1154,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 					hb->add_child(remove_btn);
 				} else {
 					Label *label = memnew(Label);
+					label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 					label->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED); // TODO: Implement proper translation switch.
 					label->set_text(name_left);
 					label->add_theme_style_override(CoreStringName(normal), editor->get_theme_stylebox(SNAME("label_style"), SNAME("VShaderEditor")));
@@ -1158,6 +1162,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 
 					if (vsnode->is_input_port_default(j, mode) && !port_left_used) {
 						Label *hint_label = memnew(Label);
+						hint_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 						hint_label->set_text(TTR("[default]"));
 						hint_label->add_theme_color_override(SceneStringName(font_color), editor->get_theme_color(SNAME("font_readonly_color"), SNAME("TextEdit")));
 						hint_label->add_theme_style_override(CoreStringName(normal), editor->get_theme_stylebox(SNAME("label_style"), SNAME("VShaderEditor")));
@@ -1201,6 +1206,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 					type_box->connect(SceneStringName(item_selected), callable_mp(editor, &VisualShaderEditor::_change_output_port_type).bind(p_id, i), CONNECT_DEFERRED);
 				} else {
 					Label *label = memnew(Label);
+					label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 					label->set_auto_translate_mode(Node::AUTO_TRANSLATE_MODE_DISABLED); // TODO: Implement proper translation switch.
 					label->set_text(name_right);
 					label->add_theme_style_override(CoreStringName(normal), editor->get_theme_stylebox(SNAME("label_style"), SNAME("VShaderEditor"))); //more compact
@@ -1212,6 +1218,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 		if (valid_right) {
 			if (expanded_port_counter == 0 && vsnode->is_output_port_expandable(i)) {
 				TextureButton *expand = memnew(TextureButton);
+				expand->set_accessibility_name(TTRC("Expand output port"));
 				expand->set_toggle_mode(true);
 				expand->set_texture_normal(editor->get_editor_theme_icon(SNAME("GuiTreeArrowRight")));
 				expand->set_texture_pressed(editor->get_editor_theme_icon(SNAME("GuiTreeArrowDown")));
@@ -1222,6 +1229,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 			}
 			if (vsnode->has_output_port_preview(i) && port_right != VisualShaderNode::PORT_TYPE_TRANSFORM && port_right != VisualShaderNode::PORT_TYPE_SAMPLER) {
 				TextureButton *preview = memnew(TextureButton);
+				preview->set_accessibility_name(TTRC("Select preview port"));
 				preview->set_toggle_mode(true);
 				preview->set_texture_normal(editor->get_editor_theme_icon(SNAME("GuiVisibilityHidden")));
 				preview->set_texture_pressed(editor->get_editor_theme_icon(SNAME("GuiVisibilityVisible")));
@@ -1367,6 +1375,7 @@ void VisualShaderGraphPlugin::add_node(VisualShader::Type p_type, int p_id, bool
 	}
 	if (!error.is_empty()) {
 		Label *error_label = memnew(Label);
+		error_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 		error_label->add_theme_color_override(SceneStringName(font_color), editor->get_theme_color(SNAME("error_color"), EditorStringName(Editor)));
 		error_label->set_text(error);
 		error_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD);
@@ -1492,9 +1501,6 @@ void VisualShaderGraphPlugin::disconnect_nodes(VisualShader::Type p_type, int p_
 	}
 }
 
-VisualShaderGraphPlugin::~VisualShaderGraphPlugin() {
-}
-
 /////////////////
 
 void VisualShaderEditedProperty::_bind_methods() {
@@ -1574,6 +1580,10 @@ void VisualShaderEditor::validate_script() {
 	if (visual_shader.is_valid()) {
 		_update_nodes();
 	}
+}
+
+Control *VisualShaderEditor::get_top_bar() {
+	return toolbar;
 }
 
 void VisualShaderEditor::add_plugin(const Ref<VisualShaderNodePlugin> &p_plugin) {
@@ -2196,8 +2206,7 @@ void VisualShaderEditor::_update_nodes() {
 		}
 	}
 
-	List<Variant> keys;
-	added.get_key_list(&keys);
+	LocalVector<Variant> keys = added.get_key_list();
 	keys.sort_custom<StringLikeVariantOrder>();
 
 	for (const Variant &key : keys) {
@@ -2465,6 +2474,13 @@ void VisualShaderEditor::_set_mode(int p_which) {
 
 Size2 VisualShaderEditor::get_minimum_size() const {
 	return Size2(10, 200);
+}
+
+void VisualShaderEditor::update_toggle_files_button() {
+	ERR_FAIL_NULL(toggle_files_list);
+	bool forward = toggle_files_list->is_visible() == is_layout_rtl();
+	toggle_files_button->set_button_icon(get_editor_theme_icon(forward ? SNAME("Forward") : SNAME("Back")));
+	toggle_files_button->set_tooltip_text(vformat("%s (%s)", TTR("Toggle Files Panel"), ED_GET_SHORTCUT("script_editor/toggle_files_panel")->get_as_text()));
 }
 
 void VisualShaderEditor::_draw_color_over_button(Object *p_obj, Color p_color) {
@@ -3306,7 +3322,7 @@ void VisualShaderEditor::_edit_port_default_input(Object *p_button, int p_node, 
 			popup_pref_size.width = 180;
 			break;
 	}
-	property_editor_popup->set_min_size(popup_pref_size);
+	property_editor_popup->set_min_size(popup_pref_size * EDSCALE);
 
 	property_editor->set_object_and_property(edited_property_holder.ptr(), "edited_property");
 	property_editor->update_property();
@@ -4425,8 +4441,8 @@ void VisualShaderEditor::_delete_nodes(int p_type, const List<int> &p_nodes) {
 		for (const VisualShader::Connection &E : conns) {
 			if (E.from_node == F || E.to_node == F) {
 				bool cancel = false;
-				for (List<VisualShader::Connection>::Element *R = used_conns.front(); R; R = R->next()) {
-					if (R->get().from_node == E.from_node && R->get().from_port == E.from_port && R->get().to_node == E.to_node && R->get().to_port == E.to_port) {
+				for (const VisualShader::Connection &R : used_conns) {
+					if (R.from_node == E.from_node && R.from_port == E.from_port && R.to_node == E.to_node && R.to_port == E.to_port) {
 						cancel = true; // to avoid ERR_ALREADY_EXISTS warning
 						break;
 					}
@@ -4885,7 +4901,7 @@ void VisualShaderEditor::_graph_gui_input(const Ref<InputEvent> &p_event) {
 			popup_menu->set_item_disabled(NodeMenuOptions::CUT, selected_deletable_graph_elements.is_empty());
 			popup_menu->set_item_disabled(NodeMenuOptions::COPY, selected_deletable_graph_elements.is_empty());
 			popup_menu->set_item_disabled(NodeMenuOptions::PASTE, copy_buffer_empty);
-			popup_menu->set_item_disabled(NodeMenuOptions::DELETE, selected_deletable_graph_elements.is_empty());
+			popup_menu->set_item_disabled(NodeMenuOptions::DELETE_, selected_deletable_graph_elements.is_empty());
 			popup_menu->set_item_disabled(NodeMenuOptions::DUPLICATE, selected_deletable_graph_elements.is_empty());
 			popup_menu->set_item_disabled(NodeMenuOptions::CLEAR_COPY_BUFFER, copy_buffer_empty);
 
@@ -5151,6 +5167,10 @@ void VisualShaderEditor::_param_unselected() {
 	_clear_preview_param();
 }
 
+void VisualShaderEditor::_help_open() {
+	OS::get_singleton()->shell_open(vformat("%s/tutorials/shaders/visual_shaders.html", GODOT_VERSION_DOCS_URL));
+}
+
 void VisualShaderEditor::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_POSTINITIALIZE: {
@@ -5192,6 +5212,7 @@ void VisualShaderEditor::_notification(int p_what) {
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
+			site_search->set_button_icon(get_editor_theme_icon(SNAME("ExternalLink")));
 			highend_label->set_modulate(get_theme_color(SNAME("highend_color"), EditorStringName(Editor)));
 
 			param_filter->set_right_icon(Control::get_editor_theme_icon(SNAME("Search")));
@@ -5255,6 +5276,11 @@ void VisualShaderEditor::_notification(int p_what) {
 			if (is_visible_in_tree()) {
 				_update_graph();
 			}
+			update_toggle_files_button();
+		} break;
+
+		case NOTIFICATION_VISIBILITY_CHANGED: {
+			update_toggle_files_button();
 		} break;
 
 		case NOTIFICATION_DRAG_BEGIN: {
@@ -6017,7 +6043,7 @@ void VisualShaderEditor::_node_menu_id_pressed(int p_idx) {
 		case NodeMenuOptions::PASTE:
 			_paste_nodes(true, menu_point);
 			break;
-		case NodeMenuOptions::DELETE:
+		case NodeMenuOptions::DELETE_:
 			_delete_nodes_request(TypedArray<StringName>());
 			break;
 		case NodeMenuOptions::DUPLICATE:
@@ -6103,6 +6129,10 @@ void VisualShaderEditor::_connection_menu_id_pressed(int p_idx) {
 }
 
 Variant VisualShaderEditor::get_drag_data_fw(const Point2 &p_point, Control *p_from) {
+	if (p_point == Vector2(Math::INF, Math::INF)) {
+		return Variant();
+	}
+
 	if (p_from == members) {
 		TreeItem *it = members->get_item_at_position(p_point);
 		if (!it) {
@@ -6119,6 +6149,7 @@ Variant VisualShaderEditor::get_drag_data_fw(const Point2 &p_point, Control *p_f
 		d["id"] = id;
 
 		Label *label = memnew(Label);
+		label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 		label->set_text(it->get_text(0));
 		label->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 		set_drag_preview(label);
@@ -6128,6 +6159,10 @@ Variant VisualShaderEditor::get_drag_data_fw(const Point2 &p_point, Control *p_f
 }
 
 bool VisualShaderEditor::can_drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) const {
+	if (p_point == Vector2(Math::INF, Math::INF)) {
+		return false;
+	}
+
 	if (p_from == graph) {
 		Dictionary d = p_data;
 
@@ -6143,6 +6178,10 @@ bool VisualShaderEditor::can_drop_data_fw(const Point2 &p_point, const Variant &
 }
 
 void VisualShaderEditor::drop_data_fw(const Point2 &p_point, const Variant &p_data, Control *p_from) {
+	if (p_point == Vector2(Math::INF, Math::INF)) {
+		return;
+	}
+
 	if (p_from == graph) {
 		Dictionary d = p_data;
 
@@ -6358,6 +6397,16 @@ void VisualShaderEditor::_show_shader_preview() {
 	}
 }
 
+void VisualShaderEditor::set_toggle_list_control(Control *p_control) {
+	toggle_files_list = p_control;
+}
+
+void VisualShaderEditor::_toggle_files_pressed() {
+	ERR_FAIL_NULL(toggle_files_list);
+	toggle_files_list->set_visible(!toggle_files_list->is_visible());
+	update_toggle_files_button();
+}
+
 void VisualShaderEditor::_bind_methods() {
 	ClassDB::bind_method("_update_nodes", &VisualShaderEditor::_update_nodes);
 	ClassDB::bind_method("_update_graph", &VisualShaderEditor::_update_graph);
@@ -6484,6 +6533,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	graph->add_valid_connection_type(VisualShaderNode::PORT_TYPE_SAMPLER, VisualShaderNode::PORT_TYPE_SAMPLER);
 
 	info_label = memnew(Label);
+	info_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	info_label->set_text(vformat(TTR("Hold %s Key To Swap Connections"), keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL)));
 	info_label->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_WIDE, PRESET_MODE_MINSIZE, 20);
 	info_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
@@ -6494,7 +6544,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	toolbar_panel->set_anchors_and_offsets_preset(Control::PRESET_TOP_WIDE, PRESET_MODE_MINSIZE, 10);
 	toolbar_panel->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
 
-	HFlowContainer *toolbar = memnew(HFlowContainer);
+	toolbar = memnew(HFlowContainer);
 	{
 		LocalVector<Node *> nodes;
 		for (int i = 0; i < graph->get_menu_hbox()->get_child_count(); i++) {
@@ -6593,6 +6643,32 @@ VisualShaderEditor::VisualShaderEditor() {
 	toolbar->add_child(shader_preview_button);
 	shader_preview_button->connect(SceneStringName(pressed), callable_mp(this, &VisualShaderEditor::_show_shader_preview));
 
+	Control *spacer = memnew(Control);
+	spacer->set_h_size_flags(Control::SIZE_EXPAND);
+	toolbar->add_child(spacer);
+
+	site_search = memnew(Button);
+	site_search->set_flat(true);
+	site_search->connect(SceneStringName(pressed), callable_mp(this, &VisualShaderEditor::_help_open));
+	site_search->set_text(TTR("Online Docs"));
+	site_search->set_tooltip_text(TTR("Open Godot online documentation."));
+	toolbar->add_child(site_search);
+	toolbar->add_child(memnew(VSeparator));
+
+	VSeparator *separator = memnew(VSeparator);
+	toolbar->add_child(separator);
+	toolbar->move_child(separator, 0);
+
+	separator = memnew(VSeparator);
+	toolbar->add_child(separator);
+	toolbar->move_child(separator, 0);
+
+	toggle_files_button = memnew(Button);
+	toggle_files_button->set_flat(true);
+	toggle_files_button->connect(SceneStringName(pressed), callable_mp(this, &VisualShaderEditor::_toggle_files_pressed));
+	toolbar->add_child(toggle_files_button);
+	toolbar->move_child(toggle_files_button, 0);
+
 	///////////////////////////////////////
 	// CODE PREVIEW
 	///////////////////////////////////////
@@ -6622,6 +6698,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	error_panel->set_visible(false);
 
 	error_label = memnew(Label);
+	error_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	error_panel->add_child(error_label);
 	error_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
 
@@ -6637,7 +6714,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	popup_menu->add_item(TTR("Cut"), NodeMenuOptions::CUT);
 	popup_menu->add_item(TTR("Copy"), NodeMenuOptions::COPY);
 	popup_menu->add_item(TTR("Paste"), NodeMenuOptions::PASTE);
-	popup_menu->add_item(TTR("Delete"), NodeMenuOptions::DELETE);
+	popup_menu->add_item(TTR("Delete"), NodeMenuOptions::DELETE_);
 	popup_menu->add_item(TTR("Duplicate"), NodeMenuOptions::DUPLICATE);
 	popup_menu->add_item(TTR("Clear Copy Buffer"), NodeMenuOptions::CLEAR_COPY_BUFFER);
 	popup_menu->connect(SceneStringName(id_pressed), callable_mp(this, &VisualShaderEditor::_node_menu_id_pressed));
@@ -6692,6 +6769,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	preview_tools = memnew(MenuButton);
 	filter_hbox->add_child(preview_tools);
 	preview_tools->set_tooltip_text(TTR("Options"));
+	preview_tools->set_accessibility_name(TTRC("Options"));
 	preview_tools->get_popup()->connect(SceneStringName(id_pressed), callable_mp(this, &VisualShaderEditor::_preview_tools_menu_option));
 	preview_tools->get_popup()->add_item(TTR("Copy Parameters From Material"), COPY_PARAMS_FROM_MATERIAL);
 	preview_tools->get_popup()->add_item(TTR("Paste Parameters To Material"), PASTE_PARAMS_TO_MATERIAL);
@@ -6741,10 +6819,12 @@ VisualShaderEditor::VisualShaderEditor() {
 	node_filter->connect(SceneStringName(gui_input), callable_mp(this, &VisualShaderEditor::_sbox_input));
 	node_filter->set_h_size_flags(SIZE_EXPAND_FILL);
 	node_filter->set_placeholder(TTR("Search"));
+	node_filter->set_accessibility_name(TTRC("Search"));
 
 	tools = memnew(MenuButton);
 	filter_hb->add_child(tools);
 	tools->set_tooltip_text(TTR("Options"));
+	tools->set_accessibility_name(TTRC("Options"));
 	tools->get_popup()->connect(SceneStringName(id_pressed), callable_mp(this, &VisualShaderEditor::_tools_menu_option));
 	tools->get_popup()->add_item(TTR("Expand All"), EXPAND_ALL);
 	tools->get_popup()->add_item(TTR("Collapse All"), COLLAPSE_ALL);
@@ -6772,6 +6852,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	desc_hbox->add_spacer();
 
 	highend_label = memnew(Label);
+	highend_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 	desc_hbox->add_child(highend_label);
 	highend_label->set_visible(false);
 	highend_label->set_text("Vulkan");
@@ -6820,6 +6901,7 @@ VisualShaderEditor::VisualShaderEditor() {
 		varying_type->add_item("Vector4");
 		varying_type->add_item("Boolean");
 		varying_type->add_item("Transform");
+		varying_type->set_accessibility_name(TTRC("Varying Type"));
 		varying_type->connect(SceneStringName(item_selected), callable_mp(this, &VisualShaderEditor::_varying_type_changed));
 
 		varying_name = memnew(LineEdit);
@@ -6833,9 +6915,11 @@ VisualShaderEditor::VisualShaderEditor() {
 		hb->add_child(varying_mode);
 		varying_mode->add_item("Vertex -> [Fragment, Light]");
 		varying_mode->add_item("Fragment -> Light");
+		varying_mode->set_accessibility_name(TTRC("Varying Mode"));
 		varying_mode->connect(SceneStringName(item_selected), callable_mp(this, &VisualShaderEditor::_varying_mode_changed));
 
 		varying_error_label = memnew(Label);
+		varying_error_label->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 		vb->add_child(varying_error_label);
 		varying_error_label->set_h_size_flags(SIZE_EXPAND_FILL);
 
@@ -7103,6 +7187,7 @@ VisualShaderEditor::VisualShaderEditor() {
 	add_options.push_back(AddOption("FragCoord", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_and_light_shader_modes, "fragcoord", "FRAGCOORD"), { "fragcoord" }, VisualShaderNode::PORT_TYPE_VECTOR_4D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
 	add_options.push_back(AddOption("NormalTexture", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "normal_texture", "NORMAL_TEXTURE"), { "normal_texture" }, VisualShaderNode::PORT_TYPE_SAMPLER, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
 	add_options.push_back(AddOption("PointCoord", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_and_light_shader_modes, "point_coord", "POINT_COORD"), { "point_coord" }, VisualShaderNode::PORT_TYPE_VECTOR_2D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
+	add_options.push_back(AddOption("RegionRect", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "region_rect", "REGION_RECT"), { "region_rect" }, VisualShaderNode::PORT_TYPE_VECTOR_4D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
 	add_options.push_back(AddOption("ScreenPixelSize", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_shader_mode, "screen_pixel_size", "SCREEN_PIXEL_SIZE"), { "screen_pixel_size" }, VisualShaderNode::PORT_TYPE_VECTOR_2D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
 	add_options.push_back(AddOption("ScreenUV", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_and_light_shader_modes, "screen_uv", "SCREEN_UV"), { "screen_uv" }, VisualShaderNode::PORT_TYPE_VECTOR_2D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
 	add_options.push_back(AddOption("SpecularShininess", "Input/Fragment", "VisualShaderNodeInput", vformat(input_param_for_fragment_and_light_shader_modes, "specular_shininess", "SPECULAR_SHININESS"), { "specular_shininess" }, VisualShaderNode::PORT_TYPE_VECTOR_4D, TYPE_FLAGS_FRAGMENT, Shader::MODE_CANVAS_ITEM));
@@ -7624,12 +7709,15 @@ public:
 	}
 
 	void _item_selected(int p_item) {
-		editor->call_deferred(SNAME("_input_select_item"), input, get_item_text(p_item));
+		editor->call_deferred(SNAME("_input_select_item"), input, get_item_metadata(p_item));
 	}
 
 	void setup(VisualShaderEditor *p_editor, const Ref<VisualShaderNodeInput> &p_input) {
+		set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+
 		editor = p_editor;
 		input = p_input;
+
 		Ref<Texture2D> type_icon[] = {
 			EditorNode::get_singleton()->get_editor_theme()->get_icon(SNAME("float"), EditorStringName(EditorIcons)),
 			EditorNode::get_singleton()->get_editor_theme()->get_icon(SNAME("int"), EditorStringName(EditorIcons)),
@@ -7642,13 +7730,16 @@ public:
 			EditorNode::get_singleton()->get_editor_theme()->get_icon(SNAME("ImageTexture"), EditorStringName(EditorIcons)),
 		};
 
-		add_item("[None]");
+		add_item(TTR("[None]"));
+		set_item_metadata(-1, "[None]");
+
 		int to_select = -1;
 		for (int i = 0; i < input->get_input_index_count(); i++) {
 			if (input->get_input_name() == input->get_input_index_name(i)) {
 				to_select = i + 1;
 			}
 			add_icon_item(type_icon[input->get_input_index_type(i)], input->get_input_index_name(i));
+			set_item_metadata(-1, input->get_input_index_name(i));
 		}
 
 		if (to_select >= 0) {
@@ -7673,10 +7764,12 @@ public:
 	}
 
 	void _item_selected(int p_item) {
-		editor->call_deferred(SNAME("_varying_select_item"), varying, get_item_text(p_item));
+		editor->call_deferred(SNAME("_varying_select_item"), varying, get_item_metadata(p_item));
 	}
 
 	void setup(VisualShaderEditor *p_editor, const Ref<VisualShaderNodeVarying> &p_varying, VisualShader::Type p_type) {
+		set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+
 		editor = p_editor;
 		varying = p_varying;
 
@@ -7693,7 +7786,8 @@ public:
 
 		bool is_getter = Ref<VisualShaderNodeVaryingGetter>(p_varying.ptr()).is_valid();
 
-		add_item("[None]");
+		add_item(TTR("[None]"));
+		set_item_metadata(-1, "[None]");
 
 		int to_select = -1;
 		for (int i = 0, j = 0; i < varying->get_varyings_count(); i++) {
@@ -7727,6 +7821,7 @@ public:
 				to_select = i - j + 1;
 			}
 			add_icon_item(type_icon[varying->get_varying_type_by_index(i)], varying->get_varying_name_by_index(i));
+			set_item_metadata(-1, varying->get_varying_name_by_index(i));
 		}
 
 		if (to_select >= 0) {
@@ -7753,10 +7848,12 @@ public:
 	}
 
 	void _item_selected(int p_item) {
-		editor->call_deferred(SNAME("_parameter_ref_select_item"), parameter_ref, get_item_text(p_item));
+		editor->call_deferred(SNAME("_parameter_ref_select_item"), parameter_ref, get_item_metadata(p_item));
 	}
 
 	void setup(VisualShaderEditor *p_editor, const Ref<VisualShaderNodeParameterRef> &p_parameter_ref) {
+		set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
+
 		editor = p_editor;
 		parameter_ref = p_parameter_ref;
 
@@ -7773,13 +7870,16 @@ public:
 			EditorNode::get_singleton()->get_editor_theme()->get_icon(SNAME("ImageTexture"), EditorStringName(EditorIcons)),
 		};
 
-		add_item("[None]");
+		add_item(TTR("[None]"));
+		set_item_metadata(-1, "[None]");
+
 		int to_select = -1;
 		for (int i = 0; i < p_parameter_ref->get_parameters_count(); i++) {
 			if (p_parameter_ref->get_parameter_name() == p_parameter_ref->get_parameter_name_by_index(i)) {
 				to_select = i + 1;
 			}
 			add_icon_item(type_icon[p_parameter_ref->get_parameter_type_by_index(i)], p_parameter_ref->get_parameter_name_by_index(i));
+			set_item_metadata(-1, p_parameter_ref->get_parameter_name_by_index(i));
 		}
 
 		if (to_select >= 0) {
@@ -7912,6 +8012,7 @@ public:
 			add_child(hbox);
 
 			Label *prop_name = memnew(Label);
+			prop_name->set_focus_mode(Control::FOCUS_ACCESSIBILITY);
 			String prop_name_str = p_names[i];
 			if (p_overrided_names.has(p_names[i])) {
 				prop_name_str = p_overrided_names[p_names[i]] + ":";
@@ -7968,7 +8069,7 @@ Control *VisualShaderNodePluginDefault::create_editor(const Ref<Resource> &p_par
 	}
 
 	Vector<StringName> properties = p_node->get_editable_properties();
-	if (properties.size() == 0) {
+	if (properties.is_empty()) {
 		return nullptr;
 	}
 
@@ -7985,7 +8086,7 @@ Control *VisualShaderNodePluginDefault::create_editor(const Ref<Resource> &p_par
 		}
 	}
 
-	if (pinfo.size() == 0) {
+	if (pinfo.is_empty()) {
 		return nullptr;
 	}
 
@@ -8127,6 +8228,7 @@ void EditorPropertyVisualShaderMode::set_option_button_clip(bool p_enable) {
 
 EditorPropertyVisualShaderMode::EditorPropertyVisualShaderMode() {
 	options = memnew(OptionButton);
+	options->set_auto_translate_mode(AUTO_TRANSLATE_MODE_DISABLED);
 	options->set_clip_text(true);
 	add_child(options);
 	add_focusable(options);

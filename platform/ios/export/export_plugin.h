@@ -28,8 +28,7 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef IOS_EXPORT_PLUGIN_H
-#define IOS_EXPORT_PLUGIN_H
+#pragma once
 
 #include "godot_plugin_config.h"
 
@@ -41,13 +40,11 @@
 #include "core/io/zip_io.h"
 #include "core/os/os.h"
 #include "core/templates/safe_refcount.h"
-#include "core/version.h"
 #include "editor/editor_settings.h"
 #include "editor/export/editor_export_platform.h"
 #include "main/splash.gen.h"
 #include "scene/resources/image_texture.h"
 
-#include <string.h>
 #include <sys/stat.h>
 
 // Optional environment variables for defining confidential information. If any
@@ -298,5 +295,3 @@ public:
 		return enabled_plugins;
 	}
 };
-
-#endif // IOS_EXPORT_PLUGIN_H
