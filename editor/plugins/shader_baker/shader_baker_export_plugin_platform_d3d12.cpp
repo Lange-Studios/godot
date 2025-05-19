@@ -32,7 +32,7 @@
 
 #include "drivers/d3d12/rendering_shader_container_d3d12.h"
 
-#include <Windows.h>
+#include <windows.h>
 
 RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformD3D12::create_shader_container_format(const Ref<EditorExportPlatform> &p_platform) {
 	if (lib_d3d12 == nullptr) {

@@ -538,7 +538,7 @@ void ShaderRD::_compile_version_start(Version *p_version, int p_group) {
 	p_version->dirty = false;
 
 #if ENABLE_SHADER_CACHE
-	if (_load_from_cache(p_version, p_group)) {
+	if (shader_cache_user_dir_valid && _load_from_cache(p_version, p_group)) {
 		return;
 	}
 #endif
