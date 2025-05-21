@@ -228,9 +228,9 @@ public:
 	static const ShaderVersionPairSet &shaders_embedded_set_get();
 	static void shaders_embedded_set_unlock();
 
-	static void set_shader_cache_user_dir(const String &p_dir);
+	static void set_shader_cache_user_dir(const String p_dir);
 	static const String &get_shader_cache_user_dir();
-	static void set_shader_cache_res_dir(const String &p_dir);
+	static void set_shader_cache_res_dir(const String p_dir);
 	static const String &get_shader_cache_res_dir();
 	static void set_shader_cache_save_compressed(bool p_enable);
 	static void set_shader_cache_save_compressed_zstd(bool p_enable);
