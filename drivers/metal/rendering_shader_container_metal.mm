@@ -572,7 +572,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const Vector<RenderingD
 			::Vector<uint8_t> library_data;
 			Error compile_err = compile_metal_source(source.c_str(), stage_data, library_data);
 			if (compile_err == OK) {
-				stage_data.library_size = binary_data.size();
+				stage_data.library_size = library_data.size();
 				binary_data.resize(stage_data.source_size + stage_data.library_size);
 				memcpy(binary_data.ptrw() + stage_data.source_size, library_data.ptr(), stage_data.library_size);
 			}

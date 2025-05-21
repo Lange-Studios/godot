@@ -1165,8 +1165,7 @@ RDD::ShaderID RenderingDeviceDriverMetal::shader_create_from_container(const Ref
 
 		MDLibrary *library = nil;
 		if (shader_data.library_size > 0) {
-			dispatch_data_t binary = dispatch_data_create(decompressed_code.ptr() + shader_data.source_size, shader_data.library_size, dispatch_get_main_queue(), ^{
-																																	   });
+			dispatch_data_t binary = dispatch_data_create(decompressed_code.ptr() + shader_data.source_size, shader_data.library_size, dispatch_get_main_queue(), DISPATCH_DATA_DESTRUCTOR_DEFAULT);
 			library = [MDLibrary newLibraryWithCacheEntry:cd
 												   device:device
 #if DEV_ENABLED
