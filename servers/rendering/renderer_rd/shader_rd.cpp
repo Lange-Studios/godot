@@ -932,7 +932,7 @@ void ShaderRD::shaders_embedded_set_unlock() {
 	shader_versions_embedded_set_mutex.unlock();
 }
 
-void ShaderRD::set_shader_cache_user_dir(const String &p_dir) {
+void ShaderRD::set_shader_cache_user_dir(const String p_dir) {
 	shader_cache_user_dir = p_dir;
 }
 
@@ -940,7 +940,7 @@ const String &ShaderRD::get_shader_cache_user_dir() {
 	return shader_cache_user_dir;
 }
 
-void ShaderRD::set_shader_cache_res_dir(const String &p_dir) {
+void ShaderRD::set_shader_cache_res_dir(const String p_dir) {
 	shader_cache_res_dir = p_dir;
 }
 
