@@ -122,28 +122,22 @@ layout(location = 9) out highp float dp_clip;
 #endif
 
 #ifdef USE_MULTIVIEW
-#ifdef has_VK_KHR_multiview
+#extension GL_EXT_multiview : enable
 #define ViewIndex gl_ViewIndex
-#else
-// !BAS! This needs to become an input once we implement our fallback!
-#define ViewIndex 0
-#endif
 vec3 multiview_uv(vec2 uv) {
 	return vec3(uv, ViewIndex);
 }
 ivec3 multiview_uv(ivec2 uv) {
 	return ivec3(uv, int(ViewIndex));
 }
-#else
-// Set to zero, not supported in non stereo
-#define ViewIndex 0
+#else // USE_MULTIVIEW
 vec2 multiview_uv(vec2 uv) {
 	return uv;
 }
 ivec2 multiview_uv(ivec2 uv) {
 	return uv;
 }
-#endif //USE_MULTIVIEW
+#endif // !USE_MULTIVIEW
 
 invariant gl_Position;
 
@@ -456,24 +450,35 @@ void main() {
 	diffuse_light_interp = vec4(0.0);
 	specular_light_interp = vec4(0.0);
 
+	uint omni_light_count = sc_omni_lights(8);
 	uvec2 omni_light_indices = instances.data[draw_call.instance_index].omni_lights;
-	for (uint i = 0; i < sc_omni_lights(); i++) {
+	for (uint i = 0; i < omni_light_count; i++) {
 		uint light_index = (i > 3) ? ((omni_light_indices.y >> ((i - 4) * 8)) & 0xFF) : ((omni_light_indices.x >> (i * 8)) & 0xFF);
+		if (i > 0 && light_index == 0xFF) {
+			break;
+		}
+
 		light_process_omni_vertex(light_index, vertex, view, normal_interp, roughness, diffuse_light_interp.rgb, specular_light_interp.rgb);
 	}
 
+	uint spot_light_count = sc_spot_lights(8);
 	uvec2 spot_light_indices = instances.data[draw_call.instance_index].spot_lights;
-	for (uint i = 0; i < sc_spot_lights(); i++) {
+	for (uint i = 0; i < spot_light_count; i++) {
 		uint light_index = (i > 3) ? ((spot_light_indices.y >> ((i - 4) * 8)) & 0xFF) : ((spot_light_indices.x >> (i * 8)) & 0xFF);
+		if (i > 0 && light_index == 0xFF) {
+			break;
+		}
+
 		light_process_spot_vertex(light_index, vertex, view, normal_interp, roughness, diffuse_light_interp.rgb, specular_light_interp.rgb);
 	}
 
-	if (sc_directional_lights() > 0) {
+	uint directional_lights_count = sc_directional_lights(scene_data.directional_light_count);
+	if (directional_lights_count > 0) {
 		// We process the first directional light separately as it may have shadows.
 		vec3 directional_diffuse = vec3(0.0);
 		vec3 directional_specular = vec3(0.0);
 
-		for (uint i = 0; i < sc_directional_lights(); i++) {
+		for (uint i = 0; i < directional_lights_count; i++) {
 			if (!bool(directional_lights.data[i].mask & instances.data[draw_call.instance_index].layer_mask)) {
 				continue; // Not masked, skip.
 			}
@@ -681,28 +686,22 @@ vec4 textureArray_bicubic(texture2DArray tex, vec3 uv, vec2 texture_size) {
 #endif //USE_LIGHTMAP
 
 #ifdef USE_MULTIVIEW
-#ifdef has_VK_KHR_multiview
+#extension GL_EXT_multiview : enable
 #define ViewIndex gl_ViewIndex
-#else
-// !BAS! This needs to become an input once we implement our fallback!
-#define ViewIndex 0
-#endif
 vec3 multiview_uv(vec2 uv) {
 	return vec3(uv, ViewIndex);
 }
 ivec3 multiview_uv(ivec2 uv) {
 	return ivec3(uv, int(ViewIndex));
 }
-#else
-// Set to zero, not supported in non stereo
-#define ViewIndex 0
+#else // USE_MULTIVIEW
 vec2 multiview_uv(vec2 uv) {
 	return uv;
 }
 ivec2 multiview_uv(ivec2 uv) {
 	return uv;
 }
-#endif //USE_MULTIVIEW
+#endif // !USE_MULTIVIEW
 
 //defines to keep compatibility with vertex
 
@@ -728,6 +727,8 @@ layout(set = MATERIAL_UNIFORM_SET, binding = 0, std140) uniform MaterialUniforms
 #endif
 
 #GLOBALS
+
+#define scene_data scene_data_block.data
 
 /* clang-format on */
 
@@ -799,7 +800,8 @@ vec4 fog_process(vec3 vertex) {
 		float sun_total = 0.0;
 		vec3 view = normalize(vertex);
 
-		for (uint i = 0; i < sc_directional_lights(); i++) {
+		uint directional_lights_count = sc_directional_lights(scene_data.directional_light_count);
+		for (uint i = 0; i < directional_lights_count; i++) {
 			vec3 light_color = directional_lights.data[i].color * directional_lights.data[i].energy;
 			float light_amount = pow(max(dot(view, directional_lights.data[i].direction), 0.0), 8.0);
 			fog_color += light_color * light_amount * scene_data_block.data.fog_sun_scatter;
@@ -830,8 +832,6 @@ vec4 fog_process(vec3 vertex) {
 }
 
 #endif //!MODE_RENDER DEPTH
-
-#define scene_data scene_data_block.data
 
 void main() {
 #ifdef UBERSHADER
@@ -1129,9 +1129,13 @@ void main() {
 	vec3 vertex_ddx = dFdx(vertex);
 	vec3 vertex_ddy = dFdy(vertex);
 
+	uint decal_count = sc_decals(8);
 	uvec2 decal_indices = instances.data[draw_call.instance_index].decals;
-	for (uint i = 0; i < sc_decals(); i++) {
+	for (uint i = 0; i < decal_count; i++) {
 		uint decal_index = (i > 3) ? ((decal_indices.y >> ((i - 4) * 8)) & 0xFF) : ((decal_indices.x >> (i * 8)) & 0xFF);
+		if (decal_index == 0xFF) {
+			break;
+		}
 
 		vec3 uv_local = (decals.data[decal_index].xform * vec4(vertex, 1.0)).xyz;
 		if (any(lessThan(uv_local, vec3(0.0, -1.0, 0.0))) || any(greaterThan(uv_local, vec3(1.0)))) {
@@ -1405,7 +1409,8 @@ void main() {
 
 	// skipping ssao, do we remove ssao totally?
 
-	if (sc_reflection_probes() > 0) {
+	uint reflection_probe_count = sc_reflection_probes(8);
+	if (reflection_probe_count > 0) {
 		vec4 reflection_accum = vec4(0.0, 0.0, 0.0, 0.0);
 		vec4 ambient_accum = vec4(0.0, 0.0, 0.0, 0.0);
 
@@ -1423,8 +1428,11 @@ void main() {
 		ref_vec = mix(ref_vec, bent_normal, roughness * roughness * roughness * roughness);
 
 		uvec2 reflection_indices = instances.data[draw_call.instance_index].reflection_probes;
-		for (uint i = 0; i < sc_reflection_probes(); i++) {
+		for (uint i = 0; i < reflection_probe_count; i++) {
 			uint reflection_index = (i > 3) ? ((reflection_indices.y >> ((i - 4) * 8)) & 0xFF) : ((reflection_indices.x >> (i * 8)) & 0xFF);
+			if (reflection_index == 0xFF) {
+				break;
+			}
 
 			if (reflection_accum.a >= 1.0 && ambient_accum.a >= 1.0) {
 				break;
@@ -1519,7 +1527,8 @@ void main() {
 	direct_specular_light += specular_light_interp.rgb * f0;
 #endif
 
-	if (sc_directional_lights() > 0) {
+	uint directional_lights_count = sc_directional_lights(scene_data.directional_light_count);
+	if (directional_lights_count > 0) {
 #ifndef SHADOWS_DISABLED
 		// Do shadow and lighting in two passes to reduce register pressure
 		uint shadow0 = 0;
@@ -1554,7 +1563,7 @@ void main() {
 			// Only process the first light's shadow for vertex lighting.
 			for (uint i = 0; i < 1; i++) {
 #else
-		for (uint i = 0; i < sc_directional_lights(); i++) {
+		for (uint i = 0; i < directional_lights_count; i++) {
 #endif
 				if (!bool(directional_lights.data[i].mask & instances.data[draw_call.instance_index].layer_mask)) {
 					continue; //not masked
@@ -1696,7 +1705,8 @@ void main() {
 #endif // SHADOWS_DISABLED
 
 #ifndef USE_VERTEX_LIGHTING
-		for (uint i = 0; i < sc_directional_lights(); i++) {
+		uint directional_lights_count = sc_directional_lights(scene_data.directional_light_count);
+		for (uint i = 0; i < directional_lights_count; i++) {
 			if (!bool(directional_lights.data[i].mask & instances.data[draw_call.instance_index].layer_mask)) {
 				continue; //not masked
 			}
@@ -1767,9 +1777,14 @@ void main() {
 	} //directional light
 
 #ifndef USE_VERTEX_LIGHTING
+	uint omni_light_count = sc_omni_lights(8);
 	uvec2 omni_indices = instances.data[draw_call.instance_index].omni_lights;
-	for (uint i = 0; i < sc_omni_lights(); i++) {
+	for (uint i = 0; i < omni_light_count; i++) {
 		uint light_index = (i > 3) ? ((omni_indices.y >> ((i - 4) * 8)) & 0xFF) : ((omni_indices.x >> (i * 8)) & 0xFF);
+		if (i > 0 && light_index == 0xFF) {
+			break;
+		}
+
 		light_process_omni(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, scene_data.taa_frame_count, albedo, alpha, screen_uv, vec3(1.0),
 #ifdef LIGHT_BACKLIGHT_USED
 				backlight,
@@ -1795,9 +1810,14 @@ void main() {
 				diffuse_light, direct_specular_light);
 	}
 
+	uint spot_light_count = sc_spot_lights(8);
 	uvec2 spot_indices = instances.data[draw_call.instance_index].spot_lights;
-	for (uint i = 0; i < sc_spot_lights(); i++) {
+	for (uint i = 0; i < spot_light_count; i++) {
 		uint light_index = (i > 3) ? ((spot_indices.y >> ((i - 4) * 8)) & 0xFF) : ((spot_indices.x >> (i * 8)) & 0xFF);
+		if (i > 0 && light_index == 0xFF) {
+			break;
+		}
+
 		light_process_spot(light_index, vertex, view, normal, vertex_ddx, vertex_ddy, f0, orms, scene_data.taa_frame_count, albedo, alpha, screen_uv, vec3(1.0),
 #ifdef LIGHT_BACKLIGHT_USED
 				backlight,

@@ -351,6 +351,20 @@ uint32_t RenderForwardMobile::get_pipeline_compilations(RS::PipelineSource p_sou
 	return scene_shader.get_pipeline_compilations(p_source);
 }
 
+void RenderForwardMobile::enable_features(BitField<FeatureBits> p_feature_bits) {
+	if (p_feature_bits.has_flag(FEATURE_MULTIVIEW_BIT)) {
+		scene_shader.enable_multiview_shader_group();
+	}
+
+	if (p_feature_bits.has_flag(FEATURE_VRS_BIT)) {
+		gi.enable_vrs_shader_group();
+	}
+}
+
+String RenderForwardMobile::get_name() const {
+	return "forward_mobile";
+}
+
 bool RenderForwardMobile::free(RID p_rid) {
 	if (RendererSceneRenderRD::free(p_rid)) {
 		return true;
@@ -883,6 +897,11 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 			using_subpass_post_process = false;
 		}
 
+		if (rb->get_screen_space_aa() == RS::VIEWPORT_SCREEN_SPACE_AA_FXAA) {
+			// Can't do blit subpass because we're using FXAA.
+			using_subpass_post_process = false;
+		}
+
 		if (scene_state.used_screen_texture || scene_state.used_depth_texture) {
 			// can't use our last two subpasses because we're reading from screen texture or depth texture
 			merge_transparent_pass = false;
@@ -1045,7 +1064,7 @@ void RenderForwardMobile::_render_scene(RenderDataRD *p_render_data, const Color
 
 	{
 		base_specialization.use_directional_soft_shadows = p_render_data->directional_light_count > 0 ? p_render_data->directional_light_soft_shadows : false;
-		base_specialization.directional_lights = p_render_data->directional_light_count;
+		base_specialization.directional_lights = SceneShaderForwardMobile::shader_count_for(p_render_data->directional_light_count);
 		base_specialization.directional_light_blend_splits = light_storage->get_directional_light_blend_splits(p_render_data->directional_light_count);
 
 		if (!is_environment(p_render_data->environment) || !environment_get_fog_enabled(p_render_data->environment)) {
@@ -2209,10 +2228,10 @@ void RenderForwardMobile::_render_list_template(RenderingDevice::DrawListID p_dr
 		} else {
 			pipeline_specialization.use_light_projector = inst->use_projector;
 			pipeline_specialization.use_light_soft_shadows = inst->use_soft_shadow;
-			pipeline_specialization.omni_lights = inst->omni_light_count;
-			pipeline_specialization.spot_lights = inst->spot_light_count;
-			pipeline_specialization.reflection_probes = inst->reflection_probe_count;
-			pipeline_specialization.decals = inst->decals_count;
+			pipeline_specialization.omni_lights = SceneShaderForwardMobile::shader_count_for(inst->omni_light_count);
+			pipeline_specialization.spot_lights = SceneShaderForwardMobile::shader_count_for(inst->spot_light_count);
+			pipeline_specialization.reflection_probes = SceneShaderForwardMobile::shader_count_for(inst->reflection_probe_count);
+			pipeline_specialization.decals = inst->decals_count > 0;
 
 #ifdef DEBUG_ENABLED
 			if (unlikely(get_debug_draw_mode() == RS::VIEWPORT_DEBUG_DRAW_LIGHTING)) {
@@ -3006,7 +3025,7 @@ void RenderForwardMobile::_mesh_compile_pipelines_for_surface(const SurfacePipel
 	pipeline_key.primitive_type = mesh_storage->mesh_surface_get_primitive(p_surface.mesh_surface);
 	pipeline_key.wireframe = false;
 
-	const bool multiview_enabled = p_global.use_multiview && scene_shader.is_multiview_enabled();
+	const bool multiview_enabled = p_global.use_multiview && scene_shader.is_multiview_shader_group_enabled();
 	const RD::DataFormat buffers_color_format = _render_buffers_get_color_format();
 	const bool buffers_can_be_storage = _render_buffers_can_be_storage();
 	const uint32_t vrs_iterations = p_global.use_vrs ? 2 : 1;

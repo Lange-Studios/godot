@@ -713,7 +713,7 @@ Vector<PluginConfigAndroid> EditorExportPlatformAndroid::get_plugins() {
 		Vector<String> plugins_filenames = list_gdap_files(plugins_dir);
 
 		if (!plugins_filenames.is_empty()) {
-			Ref<ConfigFile> config_file = memnew(ConfigFile);
+			Ref<ConfigFile> config_file;
 			for (int i = 0; i < plugins_filenames.size(); i++) {
 				PluginConfigAndroid config = PluginConfigAndroid::load_plugin_config(config_file, plugins_dir.path_join(plugins_filenames[i]));
 				if (config.valid_config) {
@@ -1918,6 +1918,10 @@ void EditorExportPlatformAndroid::get_preset_features(const Ref<EditorExportPres
 	r_features->push_back("etc2");
 	r_features->push_back("astc");
 
+	if (p_preset->get("shader_baker/enabled")) {
+		r_features->push_back("shader_baker");
+	}
+
 	Vector<ABI> abis = get_enabled_abis(p_preset);
 	for (int i = 0; i < abis.size(); ++i) {
 		r_features->push_back(abis[i].arch);
@@ -1949,11 +1953,6 @@ String EditorExportPlatformAndroid::get_export_option_warning(const EditorExport
 			String enabled_deprecated_plugins_names = _get_deprecated_plugins_names(Ref<EditorExportPreset>(p_preset));
 			if (!enabled_deprecated_plugins_names.is_empty() && !gradle_build_enabled) {
 				return TTR("\"Use Gradle Build\" must be enabled to use the plugins.");
-			}
-		} else if (p_name == "gradle_build/compress_native_libraries") {
-			bool gradle_build_enabled = p_preset->get("gradle_build/use_gradle_build");
-			if (bool(p_preset->get("gradle_build/compress_native_libraries")) && !gradle_build_enabled) {
-				return TTR("\"Compress Native Libraries\" is only valid when \"Use Gradle Build\" is enabled.");
 			}
 		} else if (p_name == "gradle_build/export_format") {
 			bool gradle_build_enabled = p_preset->get("gradle_build/use_gradle_build");
@@ -2014,6 +2013,13 @@ String EditorExportPlatformAndroid::get_export_option_warning(const EditorExport
 			if (!bool(p_preset->get("package/show_in_app_library")) && !gradle_build_enabled) {
 				return TTR("\"Use Gradle Build\" must be enabled to disable \"Show In App Library\".");
 			}
+		} else if (p_name == "shader_baker/enabled") {
+			String export_renderer = GLOBAL_GET("rendering/renderer/rendering_method.mobile");
+			if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility") {
+				return TTR("\"Shader Baker\" doesn't work with the Compatibility renderer.");
+			} else if (OS::get_singleton()->get_current_rendering_method() != export_renderer) {
+				return vformat(TTR("The editor is currently using a different renderer than what the target platform will use. \"Shader Baker\" won't be able to include core shaders. Switch to \"%s\" renderer temporarily to fix this."), export_renderer);
+			}
 		}
 	}
 	return String();
@@ -2026,7 +2032,6 @@ void EditorExportPlatformAndroid::get_export_options(List<ExportOption> *r_optio
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "gradle_build/use_gradle_build"), false, true, true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "gradle_build/gradle_build_directory", PROPERTY_HINT_PLACEHOLDER_TEXT, "res://android"), "", false, false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "gradle_build/android_source_template", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "gradle_build/compress_native_libraries"), false, false, true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "gradle_build/export_format", PROPERTY_HINT_ENUM, "Export APK,Export AAB"), EXPORT_FORMAT_APK, false, true));
 	// Using String instead of int to default to an empty string (no override) with placeholder for instructions (see GH-62465).
 	// This implies doing validation that the string is a proper int.
@@ -2079,6 +2084,8 @@ void EditorExportPlatformAndroid::get_export_options(List<ExportOption> *r_optio
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, LAUNCHER_ADAPTIVE_ICON_MONOCHROME_OPTION, PROPERTY_HINT_FILE, "*.png"), ""));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "graphics/opengl_debug"), false));
+
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "shader_baker/enabled"), false));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "xr_features/xr_mode", PROPERTY_HINT_ENUM, "Regular,OpenXR"), XR_MODE_REGULAR, false, true));
 
@@ -3500,7 +3507,6 @@ Error EditorExportPlatformAndroid::export_project_helper(const Ref<EditorExportP
 		String enabled_abi_string = join_abis(enabled_abis, "|", false);
 		String sign_flag = should_sign ? "true" : "false";
 		String zipalign_flag = "true";
-		String compress_native_libraries_flag = bool(p_preset->get("gradle_build/compress_native_libraries")) ? "true" : "false";
 
 		Vector<String> android_libraries;
 		Vector<String> android_dependencies;
@@ -3575,7 +3581,6 @@ Error EditorExportPlatformAndroid::export_project_helper(const Ref<EditorExportP
 		cmdline.push_back("-Pplugins_maven_repos=" + combined_android_dependencies_maven_repos); // argument to specify the list of maven repos for android dependencies provided by plugins.
 		cmdline.push_back("-Pperform_zipalign=" + zipalign_flag); // argument to specify whether the build should be zipaligned.
 		cmdline.push_back("-Pperform_signing=" + sign_flag); // argument to specify whether the build should be signed.
-		cmdline.push_back("-Pcompress_native_libraries=" + compress_native_libraries_flag); // argument to specify whether the build should compress native libraries.
 
 		// NOTE: The release keystore is not included in the verbose logging
 		// to avoid accidentally leaking sensitive information when sharing verbose logs for troubleshooting.
