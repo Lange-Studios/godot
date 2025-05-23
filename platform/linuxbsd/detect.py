@@ -33,6 +33,7 @@ def get_opts():
         EnumVariable("linker", "Linker program", "default", ["default", "bfd", "gold", "lld", "mold"], ignorecase=2),
         BoolVariable("use_llvm", "Use the LLVM compiler", False),
         BoolVariable("use_static_cpp", "Link libgcc and libstdc++ statically for better portability", True),
+        BoolVariable("use_libatomic", "Link libatomic.  If false, you must pass manually via linkflags", True),
         BoolVariable("use_coverage", "Test Godot coverage", False),
         BoolVariable("use_ubsan", "Use LLVM/GCC compiler undefined behavior sanitizer (UBSAN)", False),
         BoolVariable("use_asan", "Use LLVM/GCC compiler address sanitizer (ASAN)", False),
@@ -105,7 +106,7 @@ def configure(env: "SConsEnvironment"):
         env["use_llvm"] = True
 
     if env["use_llvm"]:
-        if "clang++" not in os.path.basename(env["CXX"]):
+        if env["platform_tools"] and "clang++" not in os.path.basename(env["CXX"]):
             env["CC"] = "clang"
             env["CXX"] = "clang++"
         env.extra_suffix = ".llvm" + env.extra_suffix
@@ -201,7 +202,7 @@ def configure(env: "SConsEnvironment"):
             env.Append(CCFLAGS=["-flto"])
             env.Append(LINKFLAGS=["-flto"])
 
-        if not env["use_llvm"]:
+        if env["platform_tools"] and not env["use_llvm"]:
             env["RANLIB"] = "gcc-ranlib"
             env["AR"] = "gcc-ar"
 
@@ -517,8 +518,8 @@ def configure(env: "SConsEnvironment"):
     # Link those statically for portability
     if env["use_static_cpp"]:
         env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++"])
-        if env["use_llvm"] and platform.system() != "FreeBSD":
+        if env["use_libatomic"] and env["use_llvm"] and platform.system() != "FreeBSD":
             env["LINKCOM"] = env["LINKCOM"] + " -l:libatomic.a"
     else:
-        if env["use_llvm"] and platform.system() != "FreeBSD":
+        if env["use_libatomic"] and env["use_llvm"] and platform.system() != "FreeBSD":
             env.Append(LIBS=["atomic"])

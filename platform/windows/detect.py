@@ -200,6 +200,16 @@ def get_opts():
         BoolVariable("debug_crt", "Compile with MSVC's debug CRT (/MDd)", False),
         BoolVariable("incremental_link", "Use MSVC incremental linking. May increase or decrease build times.", False),
         BoolVariable("silence_msvc", "Silence MSVC's cl/link stdout bloat, redirecting any errors to stderr.", True),
+        BoolVariable(
+            "use_windres",
+            "Use the windres compiler, even if Microsoft's rc is installed. Only applicable if manual_build_res_file is True",
+            True,
+        ),
+        BoolVariable(
+            "manual_build_res_file",
+            "Manually build the res files instead of relying on scons to do it automatically",
+            False,
+        ),
         ("angle_libs", "Path to the ANGLE static libraries", ""),
         # Direct3D 12 support.
         (
@@ -244,6 +254,113 @@ def get_flags():
         "supported": ["d3d12", "dcomp", "mono", "xaudio2"],
     }
 
+def build_res_file(target, source, env: "SConsEnvironment"):
+    arch_aliases = {
+        "x86_32": "pe-i386",
+        "x86_64": "pe-x86-64",
+        "arm32": "armv7-w64-mingw32",
+        "arm64": "aarch64-w64-mingw32",
+    }
+
+    if env["platform_tools"]:
+        if env["use_windres"]:
+            cmdbase = "windres"
+            mingw_bin_prefix = get_mingw_bin_prefix(env["mingw_prefix"], env["arch"])
+        else:
+            cmdbase = "rc"
+            mingw_bin_prefix = ""
+    else:
+        cmdbase = env["RC"]
+        mingw_bin_prefix = ""
+
+    if env["use_windres"]:
+        cmdbase += " --include-dir . --target=" + arch_aliases[env["arch"]]
+    else:
+        # rc doesn't seem to have a target architecture arg.  So not passing.
+        cmdbase += " /nologo /i ."
+
+    for x in range(len(source)):
+        ok = True
+        # Try prefixed executable (MinGW on Linux).
+        if env["use_windres"]:
+            cmd = mingw_bin_prefix + cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
+        else:
+            cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
+        try:
+            out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
+            if len(out[1]):
+                ok = False
+        except Exception:
+            ok = False
+
+        # Try generic executable (MSYS2).
+        if not ok:
+            if env["use_windres"]:
+                cmd = cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
+            else:
+                cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
+            try:
+                out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
+                if len(out[1]):
+                    return -1
+            except Exception:
+                return -1
+
+    return 0
+
+def build_res_file(target, source, env: "SConsEnvironment"):
+    arch_aliases = {
+        "x86_32": "pe-i386",
+        "x86_64": "pe-x86-64",
+        "arm32": "armv7-w64-mingw32",
+        "arm64": "aarch64-w64-mingw32",
+    }
+
+    if env["platform_tools"]:
+        if env["use_windres"]:
+            cmdbase = "windres"
+            mingw_bin_prefix = get_mingw_bin_prefix(env["mingw_prefix"], env["arch"])
+        else:
+            cmdbase = "rc"
+            mingw_bin_prefix = ""
+    else:
+        cmdbase = env["RC"]
+        mingw_bin_prefix = ""
+
+    if env["use_windres"]:
+        cmdbase += " --include-dir . --target=" + arch_aliases[env["arch"]]
+    else:
+        # rc doesn't seem to have a target architecture arg.  So not passing.
+        cmdbase += " /nologo /i ."
+
+    for x in range(len(source)):
+        ok = True
+        # Try prefixed executable (MinGW on Linux).
+        if env["use_windres"]:
+            cmd = mingw_bin_prefix + cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
+        else:
+            cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
+        try:
+            out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
+            if len(out[1]):
+                ok = False
+        except Exception:
+            ok = False
+
+        # Try generic executable (MSYS2).
+        if not ok:
+            if env["use_windres"]:
+                cmd = cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
+            else:
+                cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
+            try:
+                out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
+                if len(out[1]):
+                    return -1
+            except Exception:
+                return -1
+
+    return 0
 
 def build_def_file(target, source, env: "SConsEnvironment"):
     arch_aliases = {
@@ -283,6 +400,35 @@ def build_def_file(target, source, env: "SConsEnvironment"):
                 return -1
 
     return 0
+
+
+def setup_mingw(env: "SConsEnvironment"):
+    """Set up env for use with mingw"""
+
+    env_arch = detect_build_env_arch()
+    if os.getenv("MSYSTEM") == "MSYS":
+        print_error(
+            "Running from base MSYS2 console/environment, use target specific environment instead (e.g., mingw32, mingw64, clang32, clang64)."
+        )
+        sys.exit(255)
+
+    if env_arch != "" and env["arch"] != env_arch:
+        print_error(
+            "Arch argument (%s) is not matching MSYS2 console/environment that is being used to run SCons (%s).\n"
+            "Run SCons again without arch argument (example: scons p=windows) and SCons will attempt to detect what MSYS2 compiler will be executed and inform you."
+            % (env["arch"], env_arch)
+        )
+        sys.exit(255)
+
+    if (
+        env["platform_tools"]
+        and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"])
+        and not try_cmd("clang --version", env["mingw_prefix"], env["arch"])
+    ):
+        print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
+        sys.exit(255)
+
+    print("Using MinGW, arch %s" % (env["arch"]))
 
 
 def configure_msvc(env: "SConsEnvironment"):
@@ -678,10 +824,10 @@ def configure_mingw(env: "SConsEnvironment"):
 
     ## Build type
 
-    if not env["use_llvm"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]):
+    if env["platform_tools"] and not env["use_llvm"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]):
         env["use_llvm"] = True
 
-    if env["use_llvm"] and not try_cmd("clang --version", env["mingw_prefix"], env["arch"]):
+    if env["platform_tools"] and env["use_llvm"] and not try_cmd("clang --version", env["mingw_prefix"], env["arch"]):
         env["use_llvm"] = False
 
     if not env["use_llvm"] and try_cmd("gcc --version", env["mingw_prefix"], env["arch"], True):
@@ -702,6 +848,11 @@ def configure_mingw(env: "SConsEnvironment"):
 
     ## Compiler configuration
 
+    # If env["platform_tools"] is true, this will be handled by env.Tool("mingw").
+    # Otherwise we need to set it here.
+    if not env["platform_tools"] and os.name != "nt":
+        env["PROGSUFFIX"] = env["PROGSUFFIX"] + ".exe"
+
     if env["arch"] == "x86_32":
         if env["use_static_cpp"]:
             env.Append(LINKFLAGS=["-static"])
@@ -717,30 +868,33 @@ def configure_mingw(env: "SConsEnvironment"):
     env.Append(CCFLAGS=["-ffp-contract=off"])
 
     if env["use_llvm"]:
-        env["CC"] = get_detected(env, "clang")
-        env["CXX"] = get_detected(env, "clang++")
-        env["AR"] = get_detected(env, "ar")
-        env["RANLIB"] = get_detected(env, "ranlib")
-        env.Append(ASFLAGS=["-c"])
         env.extra_suffix = ".llvm" + env.extra_suffix
-    else:
-        env["CC"] = get_detected(env, "gcc")
-        env["CXX"] = get_detected(env, "g++")
-        env["AR"] = get_detected(env, "gcc-ar" if os.name != "nt" else "ar")
-        env["RANLIB"] = get_detected(env, "gcc-ranlib")
 
-    env["RC"] = get_detected(env, "windres")
-    ARCH_TARGETS = {
-        "x86_32": "pe-i386",
-        "x86_64": "pe-x86-64",
-        "arm32": "armv7-w64-mingw32",
-        "arm64": "aarch64-w64-mingw32",
-    }
-    env.AppendUnique(RCFLAGS=f"--target={ARCH_TARGETS[env['arch']]}")
+    if env["platform_tools"]:
+        if env["use_llvm"]:
+            env["CC"] = get_detected(env, "clang")
+            env["CXX"] = get_detected(env, "clang++")
+            env["AR"] = get_detected(env, "ar")
+            env["RANLIB"] = get_detected(env, "ranlib")
+            env.Append(ASFLAGS=["-c"])
+        else:
+            env["CC"] = get_detected(env, "gcc")
+            env["CXX"] = get_detected(env, "g++")
+            env["AR"] = get_detected(env, "gcc-ar" if os.name != "nt" else "ar")
+            env["RANLIB"] = get_detected(env, "gcc-ranlib")
 
-    env["AS"] = get_detected(env, "as")
-    env["OBJCOPY"] = get_detected(env, "objcopy")
-    env["STRIP"] = get_detected(env, "strip")
+        env["RC"] = get_detected(env, "windres")
+        ARCH_TARGETS = {
+            "x86_32": "pe-i386",
+            "x86_64": "pe-x86-64",
+            "arm32": "armv7-w64-mingw32",
+            "arm64": "aarch64-w64-mingw32",
+        }
+        env.AppendUnique(RCFLAGS=f"--target={ARCH_TARGETS[env['arch']]}")
+
+        env["AS"] = get_detected(env, "as")
+        env["OBJCOPY"] = get_detected(env, "objcopy")
+        env["STRIP"] = get_detected(env, "strip")
 
     ## LTO
 
@@ -930,8 +1084,13 @@ def configure_mingw(env: "SConsEnvironment"):
 
     env.Append(CPPDEFINES=["MINGW_ENABLED", ("MINGW_HAS_SECURE_API", 1)])
 
+    if env["manual_build_res_file"]:
+        env.Append(BUILDERS={"RES": env.Builder(action=build_res_file, suffix=".o", src_suffix=".rc")})
     # dlltool
-    env.Append(BUILDERS={"DEF": env.Builder(action=build_def_file, suffix=".a", src_suffix=".def")})
+    env["BUILDERS"]["DEF"] = env.Builder(action=build_def_file, suffix=".a", src_suffix=".def")
+
+    if env["manual_build_res_file"]:
+        env["BUILDERS"]["RES"] = env.Builder(action=build_res_file, suffix=".o", src_suffix=".rc")
 
 
 def configure(env: "SConsEnvironment"):
@@ -942,7 +1101,7 @@ def configure(env: "SConsEnvironment"):
     # At this point the env has been set up with basic tools/compilers.
     env.Prepend(CPPPATH=["#platform/windows"])
 
-    env.msvc = "mingw" not in env["TOOLS"]
+    env.msvc = "mingw" not in env["TOOLS"] and not env.get("use_mingw")
     if env.msvc:
         configure_msvc(env)
     else:

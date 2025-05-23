@@ -97,7 +97,7 @@ for x in sorted(glob.glob("platform/*")):
         platform_exporters.append(platform_name)
     if os.path.exists(x + "/api/api.cpp"):
         platform_apis.append(platform_name)
-    if detect.can_build():
+    if os.getenv("GODOT_CAN_BUILD_" + platform_name.upper()) or detect.can_build():
         x = x.replace("platform/", "")  # rest of world
         x = x.replace("platform\\", "")  # win32
         platform_list += [x]
@@ -185,6 +185,7 @@ opts.Add(
 )
 opts.Add(BoolVariable("production", "Set defaults to build Godot for use in production", False))
 opts.Add(BoolVariable("threads", "Enable threading support", True))
+opts.Add(BoolVariable("gen_only", "Only generate source code / headers. Don't compile any code.", False))
 
 # Components
 opts.Add(BoolVariable("deprecated", "Enable compatibility code for deprecated and removed features", True))
@@ -297,10 +298,22 @@ opts.Add(BoolVariable("builtin_zstd", "Use the built-in Zstd library", True))
 
 # Compilation environment setup
 # CXX, CC, and LINK directly set the equivalent `env` values (which may still
-# be overridden for a specific platform), the lowercase ones are appended.
+# be overridden for a specific platform if platform_tools is True), the lowercase ones are appended.
+opts.Add(
+    BoolVariable(
+        "platform_tools", "Allow the platform to override CC, CXX, LINK, AS, AR, RANLIB, WINDRES, and ARCOM", True
+    )
+)
 opts.Add("CXX", "C++ compiler binary")
 opts.Add("CC", "C compiler binary")
 opts.Add("LINK", "Linker binary")
+opts.Add("AS", "Assembler binary")
+opts.Add("AR", "Archiver binary")
+opts.Add("RANLIB", "Ranlib binary")
+opts.Add("RC", "Resource compiler binary")
+# Set this to something like "${TEMPFILE('$AR rcs $TARGET $SOURCES','$ARCOMSTR')}" if you get errors related to a command being too long.
+# This is a common error on Windows machines.
+opts.Add("ARCOM", "Custom command used to generate an object file from an assembly-language source file.")
 opts.Add("cppdefines", "Custom defines for the pre-processor")
 opts.Add("ccflags", "Custom flags for both the C and C++ compilers")
 opts.Add("cxxflags", "Custom flags for the C++ compiler")
@@ -316,6 +329,25 @@ opts.Add("cpp_compiler_launcher", "C++ compiler launcher (e.g. `ccache`)")
 # Update the environment to have all above options defined
 # in following code (especially platform and custom_modules).
 opts.Update(env)
+
+# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
+# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
+# ahead of time with native validator/converter functions.
+tmppath = "./platform/" + env["platform"]
+sys.path.insert(0, tmppath)
+import detect
+
+if env["platform_tools"]:
+    custom_tools = ["default"]
+    try:  # Platform custom tools are optional
+        custom_tools = detect.get_tools(env)
+    except AttributeError:
+        pass
+    for tool in custom_tools:
+        env.Tool(tool)
+else:
+    env.Tool("default")
+    opts.Update(env)
 
 # Setup caching logic early to catch everything.
 methods.prepare_cache(env)
@@ -447,24 +479,8 @@ env.modules_detected = modules_detected
 opts.Update(env, {**ARGUMENTS, **env.Dictionary()})
 Help(opts.GenerateHelpText(env))
 
+# add default include paths
 
-# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
-# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
-# ahead of time with native validator/converter functions.
-tmppath = "./platform/" + env["platform"]
-sys.path.insert(0, tmppath)
-import detect
-
-custom_tools = ["default"]
-try:  # Platform custom tools are optional
-    custom_tools = detect.get_tools(env)
-except AttributeError:
-    pass
-for tool in custom_tools:
-    env.Tool(tool)
-
-
-# Add default include paths.
 env.Prepend(CPPPATH=["#"])
 
 # Allow marking includes as external/system to avoid raising warnings.
