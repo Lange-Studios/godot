@@ -402,35 +402,6 @@ def build_def_file(target, source, env: "SConsEnvironment"):
     return 0
 
 
-def setup_mingw(env: "SConsEnvironment"):
-    """Set up env for use with mingw"""
-
-    env_arch = detect_build_env_arch()
-    if os.getenv("MSYSTEM") == "MSYS":
-        print_error(
-            "Running from base MSYS2 console/environment, use target specific environment instead (e.g., mingw32, mingw64, clang32, clang64)."
-        )
-        sys.exit(255)
-
-    if env_arch != "" and env["arch"] != env_arch:
-        print_error(
-            "Arch argument (%s) is not matching MSYS2 console/environment that is being used to run SCons (%s).\n"
-            "Run SCons again without arch argument (example: scons p=windows) and SCons will attempt to detect what MSYS2 compiler will be executed and inform you."
-            % (env["arch"], env_arch)
-        )
-        sys.exit(255)
-
-    if (
-        env["platform_tools"]
-        and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"])
-        and not try_cmd("clang --version", env["mingw_prefix"], env["arch"])
-    ):
-        print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
-        sys.exit(255)
-
-    print("Using MinGW, arch %s" % (env["arch"]))
-
-
 def configure_msvc(env: "SConsEnvironment"):
     """Configure env to work with MSVC"""
 
@@ -798,7 +769,7 @@ def configure_mingw(env: "SConsEnvironment"):
         )
         sys.exit(255)
 
-    if not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
+    if env["platform_tools"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
         "clang --version", env["mingw_prefix"], env["arch"]
     ):
         print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
