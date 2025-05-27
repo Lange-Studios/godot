@@ -193,7 +193,7 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, const String 
 				code = code.replace("VERSION_DEFINES", E.value);
 				String error;
 #ifdef MODULE_GLSLANG_ENABLED
-				Vector<uint8_t> spirv = compile_glslang_shader(RD::ShaderStage(i), ShaderIncludeDB::parse_include_files(code), RD::SHADER_LANGUAGE_VULKAN_VERSION_1_1, RD::SHADER_SPIRV_VERSION_1_5, &error);
+				Vector<uint8_t> spirv = compile_glslang_shader(RD::ShaderStage(i), ShaderIncludeDB::parse_include_files(code), RD::SHADER_LANGUAGE_VULKAN_VERSION_1_1, RD::SHADER_SPIRV_VERSION_1_3, &error);
 				bytecode->set_stage_bytecode(RD::ShaderStage(i), spirv);
 #else
 				error = "Shader compilation is not supported because glslang was not enabled.";
