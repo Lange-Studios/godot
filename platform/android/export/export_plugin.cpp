@@ -1038,6 +1038,10 @@ void EditorExportPlatformAndroid::_write_tmp_manifest(const Ref<EditorExportPres
 	store_string_at_path(manifest_path, manifest_text);
 }
 
+bool EditorExportPlatformAndroid::_should_be_transparent(const Ref<EditorExportPreset> &p_preset) const {
+	return (bool)get_project_setting(p_preset, "display/window/per_pixel_transparency/allowed");
+}
+
 void EditorExportPlatformAndroid::_fix_themes_xml(const Ref<EditorExportPreset> &p_preset) {
 	const String themes_xml_path = ExportTemplateManager::get_android_build_directory(p_preset).path_join("res/values/themes.xml");
 
@@ -1046,15 +1050,21 @@ void EditorExportPlatformAndroid::_fix_themes_xml(const Ref<EditorExportPreset> 
 		return;
 	}
 
+	bool should_be_transparent = _should_be_transparent(p_preset);
+
 	// Default/Reserved theme attributes.
 	Dictionary main_theme_attributes;
-	main_theme_attributes["android:windowDrawsSystemBarBackgrounds"] = "false";
 	main_theme_attributes["android:windowSwipeToDismiss"] = bool_to_string(p_preset->get("gesture/swipe_to_dismiss"));
+	main_theme_attributes["android:windowIsTranslucent"] = bool_to_string(should_be_transparent);
+	if (should_be_transparent) {
+		main_theme_attributes["android:windowBackground"] = "@android:color/transparent";
+	}
 
 	Dictionary splash_theme_attributes;
 	splash_theme_attributes["android:windowSplashScreenBackground"] = "@mipmap/icon_background";
 	splash_theme_attributes["windowSplashScreenAnimatedIcon"] = "@mipmap/icon_foreground";
 	splash_theme_attributes["postSplashScreenTheme"] = "@style/GodotAppMainTheme";
+	splash_theme_attributes["android:windowIsTranslucent"] = bool_to_string(should_be_transparent);
 
 	Dictionary custom_theme_attributes = p_preset->get("gradle_build/custom_theme_attributes");
 
@@ -1967,6 +1977,10 @@ void EditorExportPlatformAndroid::get_preset_features(const Ref<EditorExportPres
 	r_features->push_back("etc2");
 	r_features->push_back("astc");
 
+	if (p_preset->get("shader_baker/enabled")) {
+		r_features->push_back("shader_baker");
+	}
+
 	Vector<ABI> abis = get_enabled_abis(p_preset);
 	for (int i = 0; i < abis.size(); ++i) {
 		r_features->push_back(abis[i].arch);
@@ -2063,6 +2077,13 @@ String EditorExportPlatformAndroid::get_export_option_warning(const EditorExport
 			if (!bool(p_preset->get("package/show_in_app_library")) && !gradle_build_enabled) {
 				return TTR("\"Use Gradle Build\" must be enabled to disable \"Show In App Library\".");
 			}
+		} else if (p_name == "shader_baker/enabled" && bool(p_preset->get("shader_baker/enabled"))) {
+			String export_renderer = GLOBAL_GET("rendering/renderer/rendering_method.mobile");
+			if (OS::get_singleton()->get_current_rendering_method() == "gl_compatibility") {
+				return TTR("\"Shader Baker\" is not supported when using the Compatibility renderer.");
+			} else if (OS::get_singleton()->get_current_rendering_method() != export_renderer) {
+				return vformat(TTR("The editor is currently using a different renderer than what the target platform will use. \"Shader Baker\" won't be able to include core shaders. Switch to the \"%s\" renderer temporarily to fix this."), export_renderer);
+			}
 		}
 	}
 	return String();
@@ -2130,6 +2151,8 @@ void EditorExportPlatformAndroid::get_export_options(List<ExportOption> *r_optio
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "graphics/opengl_debug"), false));
 
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "shader_baker/enabled"), false));
+
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "xr_features/xr_mode", PROPERTY_HINT_ENUM, "Regular,OpenXR"), XR_MODE_REGULAR, false, true));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "gesture/swipe_to_dismiss"), false));
@@ -2139,6 +2162,7 @@ void EditorExportPlatformAndroid::get_export_options(List<ExportOption> *r_optio
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/support_normal"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/support_large"), true));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/support_xlarge"), true));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "screen/edge_to_edge"), false));
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "user_data_backup/allow"), false));
 
@@ -2939,7 +2963,8 @@ bool EditorExportPlatformAndroid::has_valid_project_configuration(const Ref<Edit
 		valid = false;
 	}
 
-	if (p_preset->get("gradle_build/use_gradle_build")) {
+	bool gradle_build_enabled = p_preset->get("gradle_build/use_gradle_build");
+	if (gradle_build_enabled) {
 		String build_version_path = ExportTemplateManager::get_android_build_directory(p_preset).get_base_dir().path_join(".build_version");
 		Ref<FileAccess> f = FileAccess::open(build_version_path, FileAccess::READ);
 		if (f.is_valid()) {
@@ -2949,6 +2974,12 @@ bool EditorExportPlatformAndroid::has_valid_project_configuration(const Ref<Edit
 				err += vformat(TTR(MISMATCHED_VERSIONS_MESSAGE), installed_version, current_version);
 				err += "\n";
 			}
+		}
+	} else {
+		if (_should_be_transparent(p_preset)) {
+			// Warning only, so don't override `valid`.
+			err += vformat(TTR("\"Use Gradle Build\" is required for transparent background on Android"));
+			err += "\n";
 		}
 	}
 
@@ -3045,6 +3076,11 @@ void EditorExportPlatformAndroid::get_command_line_flags(const Ref<EditorExportP
 	bool immersive = p_preset->get("screen/immersive_mode");
 	if (immersive) {
 		command_line_strings.push_back("--fullscreen");
+	}
+
+	bool edge_to_edge = p_preset->get("screen/edge_to_edge");
+	if (edge_to_edge) {
+		command_line_strings.push_back("--edge_to_edge");
 	}
 
 	bool debug_opengl = p_preset->get("graphics/opengl_debug");
