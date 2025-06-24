@@ -330,22 +330,10 @@ opts.Add("cpp_compiler_launcher", "C++ compiler launcher (e.g. `ccache`)")
 # in following code (especially platform and custom_modules).
 opts.Update(env)
 
-# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
-# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
-# ahead of time with native validator/converter functions.
-tmppath = "./platform/" + env["platform"]
-sys.path.insert(0, tmppath)
-import detect
-
-if env["platform_tools"]:
-    custom_tools = ["default"]
-    try:  # Platform custom tools are optional
-        custom_tools = detect.get_tools(env)
-    except AttributeError:
-        pass
-    for tool in custom_tools:
-        env.Tool(tool)
-else:
+# When using custom tools, we need to update the environment here so that "auto" is considered a supported arch.
+if not env["platform_tools"]:
+    tmppath = "./platform/" + env["platform"]
+    sys.path.insert(0, tmppath)
     env.Tool("default")
     opts.Update(env)
 
@@ -481,6 +469,24 @@ Help(opts.GenerateHelpText(env))
 
 # add default include paths
 
+# FIXME: Tool assignment happening at this stage is a direct consequence of getting the platform logic AFTER the SCons
+# environment was already been constructed. Fixing this would require a broader refactor where all options are setup
+# ahead of time with native validator/converter functions.
+tmppath = "./platform/" + env["platform"]
+sys.path.insert(0, tmppath)
+import detect
+
+if env["platform_tools"]:
+    custom_tools = ["default"]
+    try:  # Platform custom tools are optional
+        custom_tools = detect.get_tools(env)
+    except AttributeError:
+        pass
+    for tool in custom_tools:
+        env.Tool(tool)
+
+
+# Add default include paths.
 env.Prepend(CPPPATH=["#"])
 
 # Allow marking includes as external/system to avoid raising warnings.

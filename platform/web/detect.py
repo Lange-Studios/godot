@@ -204,6 +204,7 @@ def configure(env: "SConsEnvironment"):
     if env["platform_tools"]:
         env["CC"] = "emcc"
         env["CXX"] = "em++"
+
         env["AR"] = "emar"
         env["RANLIB"] = "emranlib"
 
