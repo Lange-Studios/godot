@@ -787,7 +787,7 @@ def configure_mingw(env: "SConsEnvironment"):
         )
         sys.exit(255)
 
-    if not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
+    if env["platform_tools"] and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"]) and not try_cmd(
         "clang --version", env["mingw_prefix"], env["arch"]
     ):
         print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
