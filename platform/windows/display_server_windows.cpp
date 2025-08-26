@@ -149,8 +149,9 @@ bool DisplayServerWindows::has_feature(Feature p_feature) const {
 		case FEATURE_STATUS_INDICATOR:
 		case FEATURE_WINDOW_EMBEDDING:
 		case FEATURE_WINDOW_DRAG:
-		case FEATURE_SCREEN_EXCLUDE_FROM_CAPTURE:
 			return true;
+		case FEATURE_SCREEN_EXCLUDE_FROM_CAPTURE:
+			return (os_ver.dwBuildNumber >= 19041); // Fully supported on Windows 10 Vibranium R1 (2004)+ only, captured as black rect on older versions.
 		case FEATURE_EMOJI_AND_SYMBOL_PICKER:
 			return (os_ver.dwBuildNumber >= 17134); // Windows 10 Redstone 4 (1803)+ only.
 #ifdef ACCESSKIT_ENABLED
@@ -7193,10 +7194,8 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Win
 	}
 
 #ifdef SDL_ENABLED
-	joypad_sdl = memnew(JoypadSDL());
-	if (joypad_sdl->initialize() == OK) {
-		joypad_sdl->setup_sdl_helper_window(windows[MAIN_WINDOW_ID].hWnd);
-	} else {
+	joypad_sdl = memnew(JoypadSDL(windows[MAIN_WINDOW_ID].hWnd));
+	if (joypad_sdl->initialize() != OK) {
 		ERR_PRINT("Couldn't initialize SDL joypad input driver.");
 		memdelete(joypad_sdl);
 		joypad_sdl = nullptr;

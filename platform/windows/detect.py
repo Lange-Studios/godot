@@ -354,75 +354,6 @@ def build_res_file(target, source, env: "SConsEnvironment"):
 
     return 0
 
-def build_def_file(target, source, env: "SConsEnvironment"):
-    arch_aliases = {
-        "x86_32": "i386",
-        "x86_64": "i386:x86-64",
-        "arm32": "arm",
-        "arm64": "arm64",
-    }
-
-    cmdbase = "dlltool -m " + arch_aliases[env["arch"]]
-    if env["arch"] == "x86_32":
-        cmdbase += " -k"
-    else:
-        cmdbase += " --no-leading-underscore"
-
-    mingw_bin_prefix = get_mingw_bin_prefix(env["mingw_prefix"], env["arch"])
-
-    for x in range(len(source)):
-        ok = True
-        # Try prefixed executable (MinGW on Linux).
-        cmd = mingw_bin_prefix + cmdbase + " -d " + str(source[x]) + " -l " + str(target[x])
-        try:
-            out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
-            if len(out[1]):
-                ok = False
-        except Exception:
-            ok = False
-
-        # Try generic executable (MSYS2).
-        if not ok:
-            cmd = cmdbase + " -d " + str(source[x]) + " -l " + str(target[x])
-            try:
-                out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
-                if len(out[1]):
-                    return -1
-            except Exception:
-                return -1
-
-    return 0
-
-
-def setup_mingw(env: "SConsEnvironment"):
-    """Set up env for use with mingw"""
-
-    env_arch = detect_build_env_arch()
-    if os.getenv("MSYSTEM") == "MSYS":
-        print_error(
-            "Running from base MSYS2 console/environment, use target specific environment instead (e.g., mingw32, mingw64, clang32, clang64)."
-        )
-        sys.exit(255)
-
-    if env_arch != "" and env["arch"] != env_arch:
-        print_error(
-            "Arch argument (%s) is not matching MSYS2 console/environment that is being used to run SCons (%s).\n"
-            "Run SCons again without arch argument (example: scons p=windows) and SCons will attempt to detect what MSYS2 compiler will be executed and inform you."
-            % (env["arch"], env_arch)
-        )
-        sys.exit(255)
-
-    if (
-        env["platform_tools"]
-        and not try_cmd("gcc --version", env["mingw_prefix"], env["arch"])
-        and not try_cmd("clang --version", env["mingw_prefix"], env["arch"])
-    ):
-        print_error("No valid compilers found, use MINGW_PREFIX environment variable to set MinGW path.")
-        sys.exit(255)
-
-    print("Using MinGW, arch %s" % (env["arch"]))
-
-
 def configure_msvc(env: "SConsEnvironment"):
     """Configure env to work with MSVC"""
 
@@ -1066,10 +997,35 @@ def configure_mingw(env: "SConsEnvironment"):
     if env["manual_build_res_file"]:
         env.Append(BUILDERS={"RES": env.Builder(action=build_res_file, suffix=".o", src_suffix=".rc")})
     # dlltool
-    env["BUILDERS"]["DEF"] = env.Builder(action=build_def_file, suffix=".a", src_suffix=".def")
+    env["DEF"] = get_detected(env, "dlltool")
+    env["DEFCOM"] = "$DEF $DEFFLAGS -d $SOURCE -l $TARGET"
+    env["DEFCOMSTR"] = "$CXXCOMSTR"
+    env["DEFPREFIX"] = "$LIBPREFIX"
+    env["DEFSUFFIX"] = ".${__env__['arch']}$LIBSUFFIX"
+    env["DEFSRCSUFFIX"] = ".${__env__['arch']}.def"
+    DEF_ALIASES = {
+        "x86_32": "i386",
+        "x86_64": "i386:x86-64",
+        "arm32": "arm",
+        "arm64": "arm64",
+    }
+    env.Append(DEFFLAGS=["-m", DEF_ALIASES[env["arch"]]])
+    if env["arch"] == "x86_32":
+        env.Append(DEFFLAGS=["-k"])
+    else:
+        env.Append(DEFFLAGS=["--no-leading-underscore"])
 
-    if env["manual_build_res_file"]:
-        env["BUILDERS"]["RES"] = env.Builder(action=build_res_file, suffix=".o", src_suffix=".rc")
+    env.Append(
+        BUILDERS={
+            "DEFLIB": env.Builder(
+                action=env.Run("$DEFCOM", "$DEFCOMSTR"),
+                prefix="$DEFPREFIX",
+                suffix="$DEFSUFFIX",
+                src_suffix="$DEFSRCSUFFIX",
+                emitter=methods.redirect_emitter,
+            )
+        }
+    )
 
 
 def configure(env: "SConsEnvironment"):
