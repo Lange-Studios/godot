@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "editor/export/editor_export_preset.h"
 #import "sha256_digest.h"
 
 #import "servers/rendering/rendering_device_driver.h"
@@ -212,7 +213,7 @@ public:
 
 private:
 	const MetalDeviceProfile *device_profile = nullptr;
-	bool export_mode = false;
+	Ref<EditorExportPreset> preset = nullptr;
 
 	Vector<UniformData> mtl_reflection_binding_set_uniforms_data; // compliment to reflection_binding_set_uniforms_data
 	Vector<SpecializationData> mtl_reflection_specialization_data; // compliment to reflection_specialization_data
@@ -222,7 +223,7 @@ private:
 public:
 	static constexpr uint32_t FORMAT_VERSION = 1;
 
-	void set_export_mode(bool p_export_mode) { export_mode = p_export_mode; }
+	void set_export_preset(const Ref<EditorExportPreset> p_preset) { preset = p_preset; }
 	void set_device_profile(const MetalDeviceProfile *p_device_profile) { device_profile = p_device_profile; }
 
 	struct MetalShaderReflection {
@@ -252,7 +253,7 @@ protected:
 };
 
 class RenderingShaderContainerFormatMetal : public RenderingShaderContainerFormat {
-	bool export_mode = false;
+	const Ref<EditorExportPreset> &preset = nullptr;
 
 	const MetalDeviceProfile *device_profile = nullptr;
 
@@ -260,6 +261,6 @@ public:
 	virtual Ref<RenderingShaderContainer> create_container() const override;
 	virtual ShaderLanguageVersion get_shader_language_version() const override;
 	virtual ShaderSpirvVersion get_shader_spirv_version() const override;
-	RenderingShaderContainerFormatMetal(const MetalDeviceProfile *p_device_profile, bool p_export = false);
+	RenderingShaderContainerFormatMetal(const MetalDeviceProfile *p_device_profile, const Ref<EditorExportPreset> &p_preset = nullptr);
 	virtual ~RenderingShaderContainerFormatMetal() = default;
 };

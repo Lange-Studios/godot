@@ -32,7 +32,7 @@
 
 #include "drivers/metal/rendering_shader_container_metal.h"
 
-RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformMetal::create_shader_container_format(const Ref<EditorExportPlatform> &p_platform) {
+RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformMetal::create_shader_container_format(const Ref<EditorExportPlatform> &p_platform, const Ref<EditorExportPreset> &p_preset) {
 	const String &os_name = p_platform->get_os_name();
 	const MetalDeviceProfile *profile;
 
@@ -43,7 +43,7 @@ RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformMetal::create_sha
 	} else {
 		ERR_FAIL_V_MSG(nullptr, vformat("Unsupported platform: %s", os_name));
 	}
-	return memnew(RenderingShaderContainerFormatMetal(profile, true));
+	return memnew(RenderingShaderContainerFormatMetal(profile, p_preset));
 }
 
 bool ShaderBakerExportPluginPlatformMetal::matches_driver(const String &p_driver) {

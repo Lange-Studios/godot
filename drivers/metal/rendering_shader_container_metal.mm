@@ -30,6 +30,8 @@
 
 #include "rendering_shader_container_metal.h"
 
+#include "editor/export/editor_export.h"
+#include "editor/export/editor_export_preset.h"
 #include "servers/rendering/rendering_device.h"
 
 #import "core/io/marshalls.h"
@@ -118,6 +120,30 @@ Error RenderingShaderContainerMetal::compile_metal_source(const char *p_source, 
 	// Build the metallib binary.
 	{
 		List<String> args{ "-sdk", sdk, "metal", "-O3" };
+
+#ifdef TOOLS_ENABLED
+		// Compile metal shaders for the minimum supported target instead of the host machine
+		if (Engine::get_singleton()->is_editor_hint() && preset.is_valid()) {
+			switch (device_profile->platform) {
+				case MetalDeviceProfile::Platform::macOS: {
+					// Godot metal doesn't support x86_64 mac so no need to worry about that version
+					String min_macos = preset->get("application/min_macos_version_arm64");
+					if (!min_macos.is_empty()) {
+						args.push_back("-mmacosx-version-min=" + min_macos);
+					}
+					break;
+				}
+				case MetalDeviceProfile::Platform::iOS: {
+					String min_ios = preset->get("application/min_ios_version");
+					if (!min_ios.is_empty()) {
+						args.push_back("-mios-version-min=" + min_ios);
+					}
+					break;
+				}
+			}
+		}
+#endif
+
 		if (p_stage_data.is_position_invariant) {
 			args.push_back("-fpreserve-invariance");
 		}
@@ -570,7 +596,7 @@ bool RenderingShaderContainerMetal::_set_code_from_spirv(const Vector<RenderingD
 		binary_data.resize(stage_data.source_size);
 		memcpy(binary_data.ptrw(), source.c_str(), stage_data.source_size);
 
-		if (export_mode) {
+		if (preset.is_valid()) {
 			// Try to compile the Metal source code
 			::Vector<uint8_t> library_data;
 			Error compile_err = compile_metal_source(source.c_str(), stage_data, library_data);
@@ -691,7 +717,7 @@ uint32_t RenderingShaderContainerMetal::_format_version() const {
 Ref<RenderingShaderContainer> RenderingShaderContainerFormatMetal::create_container() const {
 	Ref<RenderingShaderContainerMetal> result;
 	result.instantiate();
-	result->set_export_mode(export_mode);
+	result->set_export_preset(preset);
 	result->set_device_profile(device_profile);
 	return result;
 }
@@ -704,6 +730,6 @@ RenderingDeviceCommons::ShaderSpirvVersion RenderingShaderContainerFormatMetal::
 	return SHADER_SPIRV_VERSION_1_6;
 }
 
-RenderingShaderContainerFormatMetal::RenderingShaderContainerFormatMetal(const MetalDeviceProfile *p_device_profile, bool p_export) :
-		export_mode(p_export), device_profile(p_device_profile) {
+RenderingShaderContainerFormatMetal::RenderingShaderContainerFormatMetal(const MetalDeviceProfile *p_device_profile, const Ref<EditorExportPreset> &p_preset) :
+		preset(p_preset), device_profile(p_device_profile) {
 }
