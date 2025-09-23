@@ -572,6 +572,12 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 	Ref<LoadToken> load_token;
 	bool must_not_register = false;
 	ThreadLoadTask *load_task_ptr = nullptr;
+
+	Ref<Resource> existing = nullptr;
+	if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE) {
+		existing = ResourceCache::get_ref(local_path);
+	}
+
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
 
@@ -613,17 +619,14 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 			load_task.type_hint = p_type_hint;
 			load_task.cache_mode = p_cache_mode;
 			load_task.use_sub_threads = p_thread_mode == LOAD_THREAD_DISTRIBUTE;
-			if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE) {
-				Ref<Resource> existing = ResourceCache::get_ref(local_path);
-				if (existing.is_valid()) {
-					//referencing is fine
-					load_task.resource = existing;
-					load_task.status = THREAD_LOAD_LOADED;
-					load_task.progress = 1.0;
-					DEV_ASSERT(!thread_load_tasks.has(local_path));
-					thread_load_tasks[local_path] = load_task;
-					return load_token;
-				}
+			if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE && existing.is_valid()) {
+				//referencing is fine
+				load_task.resource = existing;
+				load_task.status = THREAD_LOAD_LOADED;
+				load_task.progress = 1.0;
+				DEV_ASSERT(!thread_load_tasks.has(local_path));
+				thread_load_tasks[local_path] = load_task;
+				return load_token;
 			}
 
 			// If we want to ignore cache, but there's another task loading it, we can't add this one to the map.
