@@ -38,15 +38,14 @@ RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformMetal::create_sha
 	MinOsVersion min_os_version;
 
 	if (os_name == U"macOS") {
+		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::macOS, MetalDeviceProfile::string_to_gpu(p_preset->get("application/min_macos_gpu_family")));
 		min_os_version = (String)p_preset->get("application/min_macos_version_arm64");
-		// Godot metal doesn't support x86_64 mac so no need to worry about that version
-		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::macOS, MetalDeviceProfile::GPU::Apple7, min_os_version);
 	} else if (os_name == U"iOS") {
-		min_os_version = (String)p_preset->get("application/min_ios_version");
-		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::iOS, MetalDeviceProfile::GPU::Apple7, min_os_version);
+		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::iOS, MetalDeviceProfile::string_to_gpu(p_preset->get("application/min_ios_gpu_family")));
+		min_os_version = p_preset->get("application/min_ios_version");
 	} else if (os_name == U"visionOS") {
+		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::iOS, MetalDeviceProfile::string_to_gpu(p_preset->get("application/min_visionos_gpu_family")));
 		min_os_version = (String)p_preset->get("application/min_visionos_version");
-		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::visionOS, MetalDeviceProfile::GPU::Apple8, min_os_version);
 	} else {
 		ERR_FAIL_V_MSG(nullptr, vformat("Unsupported platform: %s", os_name));
 	}

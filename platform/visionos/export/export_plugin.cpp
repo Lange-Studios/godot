@@ -56,6 +56,7 @@ void EditorExportPlatformVisionOS::get_export_options(List<ExportOption> *r_opti
 	EditorExportPlatformAppleEmbedded::get_export_options(r_options);
 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "application/min_visionos_version"), get_minimum_deployment_target()));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "application/min_visionos_gpu_family", PROPERTY_HINT_ENUM, "Apple1,Apple2,Apple3,Apple4,Apple5,Apple6,Apple7,Apple8,Apple9"), "Apple7"));
 }
 
 Vector<EditorExportPlatformAppleEmbedded::IconInfo> EditorExportPlatformVisionOS::get_icon_infos() const {
