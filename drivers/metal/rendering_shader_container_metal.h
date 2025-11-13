@@ -105,6 +105,7 @@ struct MetalDeviceProfile {
 	Features features;
 
 	static const MetalDeviceProfile *get_profile(Platform p_platform, GPU p_gpu);
+	static const GPU string_to_gpu(const String &value);
 
 	MetalDeviceProfile() = default;
 
