@@ -86,6 +86,38 @@ const MetalDeviceProfile *MetalDeviceProfile::get_profile(MetalDeviceProfile::Pl
 	return &profiles.insert(key, res)->value;
 }
 
+const MetalDeviceProfile::GPU MetalDeviceProfile::string_to_gpu(const String &val) {
+	if (val == "Apple1") {
+		return GPU::Apple1;
+	}
+	if (val == "Apple2") {
+		return GPU::Apple2;
+	}
+	if (val == "Apple3") {
+		return GPU::Apple3;
+	}
+	if (val == "Apple4") {
+		return GPU::Apple4;
+	}
+	if (val == "Apple5") {
+		return GPU::Apple5;
+	}
+	if (val == "Apple6") {
+		return GPU::Apple6;
+	}
+	if (val == "Apple7") {
+		return GPU::Apple7;
+	}
+	if (val == "Apple8") {
+		return GPU::Apple8;
+	}
+	if (val == "Apple9") {
+		return GPU::Apple9;
+	}
+
+	ERR_FAIL_V_MSG(GPU::Apple7, "Invalid gpu family: " + val + ". Defaulting to Apple7.");
+}
+
 void RenderingShaderContainerMetal::_initialize_toolchain_properties() {
 	if (compiler_props.is_valid()) {
 		return;
