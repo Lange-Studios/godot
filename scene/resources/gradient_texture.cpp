@@ -31,6 +31,7 @@
 #include "gradient_texture.h"
 
 #include "core/math/geometry_2d.h"
+#include "servers/rendering/rendering_server.h"
 
 GradientTexture1D::GradientTexture1D() {
 	_queue_update();
@@ -39,7 +40,7 @@ GradientTexture1D::GradientTexture1D() {
 GradientTexture1D::~GradientTexture1D() {
 	if (texture.is_valid()) {
 		ERR_FAIL_NULL(RenderingServer::get_singleton());
-		RS::get_singleton()->free(texture);
+		RS::get_singleton()->free_rid(texture);
 	}
 }
 
@@ -53,7 +54,7 @@ void GradientTexture1D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_use_hdr", "enabled"), &GradientTexture1D::set_use_hdr);
 	ClassDB::bind_method(D_METHOD("is_using_hdr"), &GradientTexture1D::is_using_hdr);
 
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gradient", PROPERTY_HINT_RESOURCE_TYPE, "Gradient", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_gradient", "get_gradient");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gradient", PROPERTY_HINT_RESOURCE_TYPE, Gradient::get_class_static(), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_gradient", "get_gradient");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "width", PROPERTY_HINT_RANGE, "1,16384,suffix:px"), "set_width", "get_width");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hdr"), "set_use_hdr", "is_using_hdr");
 }
@@ -120,10 +121,10 @@ void GradientTexture1D::_update() const {
 				float ofs = float(i) / (width - 1);
 				Color color = g.get_color_at_offset(ofs);
 
-				wd8[i * 4 + 0] = uint8_t(CLAMP(color.r * 255.0, 0, 255));
-				wd8[i * 4 + 1] = uint8_t(CLAMP(color.g * 255.0, 0, 255));
-				wd8[i * 4 + 2] = uint8_t(CLAMP(color.b * 255.0, 0, 255));
-				wd8[i * 4 + 3] = uint8_t(CLAMP(color.a * 255.0, 0, 255));
+				wd8[i * 4 + 0] = uint8_t(color.get_r8());
+				wd8[i * 4 + 1] = uint8_t(color.get_g8());
+				wd8[i * 4 + 2] = uint8_t(color.get_b8());
+				wd8[i * 4 + 3] = uint8_t(color.get_a8());
 			}
 		}
 
@@ -194,7 +195,7 @@ GradientTexture2D::GradientTexture2D() {
 GradientTexture2D::~GradientTexture2D() {
 	if (texture.is_valid()) {
 		ERR_FAIL_NULL(RenderingServer::get_singleton());
-		RS::get_singleton()->free(texture);
+		RS::get_singleton()->free_rid(texture);
 	}
 }
 
@@ -259,10 +260,10 @@ void GradientTexture2D::_update() const {
 						float ofs = _get_gradient_offset_at(x, y);
 						const Color &c = g.get_color_at_offset(ofs);
 
-						wd8[(x + (y * width)) * 4 + 0] = uint8_t(CLAMP(c.r * 255.0, 0, 255));
-						wd8[(x + (y * width)) * 4 + 1] = uint8_t(CLAMP(c.g * 255.0, 0, 255));
-						wd8[(x + (y * width)) * 4 + 2] = uint8_t(CLAMP(c.b * 255.0, 0, 255));
-						wd8[(x + (y * width)) * 4 + 3] = uint8_t(CLAMP(c.a * 255.0, 0, 255));
+						wd8[(x + (y * width)) * 4 + 0] = uint8_t(c.get_r8());
+						wd8[(x + (y * width)) * 4 + 1] = uint8_t(c.get_g8());
+						wd8[(x + (y * width)) * 4 + 2] = uint8_t(c.get_b8());
+						wd8[(x + (y * width)) * 4 + 3] = uint8_t(c.get_a8());
 					}
 				}
 			}
@@ -435,7 +436,7 @@ void GradientTexture2D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_repeat", "repeat"), &GradientTexture2D::set_repeat);
 	ClassDB::bind_method(D_METHOD("get_repeat"), &GradientTexture2D::get_repeat);
 
-	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gradient", PROPERTY_HINT_RESOURCE_TYPE, "Gradient", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_gradient", "get_gradient");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "gradient", PROPERTY_HINT_RESOURCE_TYPE, Gradient::get_class_static(), PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_gradient", "get_gradient");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "width", PROPERTY_HINT_RANGE, "1,2048,or_greater,suffix:px"), "set_width", "get_width");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "height", PROPERTY_HINT_RANGE, "1,2048,or_greater,suffix:px"), "set_height", "get_height");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_hdr"), "set_use_hdr", "is_using_hdr");
