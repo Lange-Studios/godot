@@ -249,59 +249,6 @@ def get_flags():
         "supported": ["d3d12", "dcomp", "library", "mono", "xaudio2"],
     }
 
-def build_res_file(target, source, env: "SConsEnvironment"):
-    arch_aliases = {
-        "x86_32": "pe-i386",
-        "x86_64": "pe-x86-64",
-        "arm32": "armv7-w64-mingw32",
-        "arm64": "aarch64-w64-mingw32",
-    }
-
-    if env["platform_tools"]:
-        if env["use_windres"]:
-            cmdbase = "windres"
-            mingw_bin_prefix = get_mingw_bin_prefix(env["mingw_prefix"], env["arch"])
-        else:
-            cmdbase = "rc"
-            mingw_bin_prefix = ""
-    else:
-        cmdbase = env["RC"]
-        mingw_bin_prefix = ""
-
-    if env["use_windres"]:
-        cmdbase += " --include-dir . --target=" + arch_aliases[env["arch"]]
-    else:
-        # rc doesn't seem to have a target architecture arg.  So not passing.
-        cmdbase += " /nologo /i ."
-
-    for x in range(len(source)):
-        ok = True
-        # Try prefixed executable (MinGW on Linux).
-        if env["use_windres"]:
-            cmd = mingw_bin_prefix + cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
-        else:
-            cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
-        try:
-            out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
-            if len(out[1]):
-                ok = False
-        except Exception:
-            ok = False
-
-        # Try generic executable (MSYS2).
-        if not ok:
-            if env["use_windres"]:
-                cmd = cmdbase + " -i " + str(source[x]) + " -o " + str(target[x])
-            else:
-                cmd = cmdbase + " /fo " + str(target[x]) + " " + str(source[x])
-            try:
-                out = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE).communicate()
-                if len(out[1]):
-                    return -1
-            except Exception:
-                return -1
-
-    return 0
 
 def build_res_file(target, source, env: "SConsEnvironment"):
     arch_aliases = {
@@ -356,6 +303,7 @@ def build_res_file(target, source, env: "SConsEnvironment"):
                 return -1
 
     return 0
+
 
 def configure_msvc(env: "SConsEnvironment"):
     """Configure env to work with MSVC"""
@@ -993,6 +941,7 @@ def configure_mingw(env: "SConsEnvironment"):
 
     if env["manual_build_res_file"]:
         env.Append(BUILDERS={"RES": env.Builder(action=build_res_file, suffix=".o", src_suffix=".rc")})
+
     # dlltool
     env["DEF"] = get_detected(env, "dlltool")
     env["DEFCOM"] = "$DEF $DEFFLAGS -d $SOURCE -l $TARGET"
