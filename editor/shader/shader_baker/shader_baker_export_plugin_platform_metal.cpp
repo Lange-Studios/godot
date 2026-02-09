@@ -44,8 +44,8 @@ RenderingShaderContainerFormat *ShaderBakerExportPluginPlatformMetal::create_sha
 		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::iOS, MetalDeviceProfile::string_to_gpu(p_preset->get("application/min_ios_gpu_family")));
 		min_os_version = p_preset->get("application/min_ios_version");
 	} else if (os_name == U"visionOS") {
+		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::iOS, MetalDeviceProfile::string_to_gpu(p_preset->get("application/min_visionos_gpu_family")));
 		min_os_version = (String)p_preset->get("application/min_visionos_version");
-		profile = MetalDeviceProfile::get_profile(MetalDeviceProfile::Platform::visionOS, MetalDeviceProfile::GPU::Apple8, min_os_version);
 	} else {
 		ERR_FAIL_V_MSG(nullptr, vformat("Unsupported platform: %s", os_name));
 	}
