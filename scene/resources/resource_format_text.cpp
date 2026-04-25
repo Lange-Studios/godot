@@ -33,6 +33,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/missing_resource.h"
+#include "core/object/class_db.h"
 #include "core/object/script_language.h"
 #include "scene/property_utils.h"
 
@@ -516,7 +517,7 @@ Error ResourceLoaderText::load() {
 
 		ext_resources[id].path = path;
 		ext_resources[id].type = type;
-		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false, res_path);
+		ext_resources[id].load_token = ResourceLoader::_load_start(path, type, use_sub_threads ? ResourceLoader::LOAD_THREAD_DISTRIBUTE : ResourceLoader::LOAD_THREAD_FROM_CURRENT, cache_mode_for_external, false);
 		if (ext_resources[id].load_token.is_null()) {
 			if (ResourceLoader::get_abort_on_missing_resources()) {
 				error = ERR_FILE_CORRUPT;
@@ -583,7 +584,7 @@ Error ResourceLoaderText::load() {
 			}
 		}
 
-		MissingResource *missing_resource = nullptr;
+		Ref<MissingResource> missing_resource;
 
 		if (res.is_null()) { //not reuse
 			auto create_func = [&]() -> Ref<Resource> {
@@ -593,7 +594,7 @@ Error ResourceLoaderText::load() {
 						missing_resource = memnew(MissingResource);
 						missing_resource->set_original_class(type);
 						missing_resource->set_recording_properties(true);
-						obj = missing_resource;
+						obj = missing_resource.ptr();
 					} else {
 						error_text = vformat("Can't create sub resource of type '%s'", type);
 						_printerr();
@@ -673,7 +674,7 @@ Error ResourceLoaderText::load() {
 				if (do_assign) {
 					bool set_valid = true;
 
-					if (value.get_type() == Variant::OBJECT && missing_resource == nullptr && ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
+					if (value.get_type() == Variant::OBJECT && missing_resource.is_null() && ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
 						// If the property being set is a missing resource (and the parent is not),
 						// then setting it will most likely not work.
 						// Instead, save it as metadata.
@@ -726,7 +727,7 @@ Error ResourceLoaderText::load() {
 			}
 		}
 
-		if (missing_resource) {
+		if (missing_resource.is_valid()) {
 			missing_resource->set_recording_properties(false);
 		}
 
@@ -747,7 +748,7 @@ Error ResourceLoaderText::load() {
 			return error;
 		}
 
-		MissingResource *missing_resource = nullptr;
+		Ref<MissingResource> missing_resource;
 
 		resource = ResourceLoader::get_resource_ref_override(local_path);
 		if (resource.is_null()) {
@@ -765,7 +766,7 @@ Error ResourceLoaderText::load() {
 							missing_resource = memnew(MissingResource);
 							missing_resource->set_original_class(res_type);
 							missing_resource->set_recording_properties(true);
-							obj = missing_resource;
+							obj = missing_resource.ptr();
 						} else {
 							error_text = vformat("Can't create sub resource of type '%s'", res_type);
 							_printerr();
@@ -821,7 +822,7 @@ Error ResourceLoaderText::load() {
 			if (!assign.is_empty()) {
 				bool set_valid = true;
 
-				if (value.get_type() == Variant::OBJECT && missing_resource == nullptr && ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
+				if (value.get_type() == Variant::OBJECT && missing_resource.is_null() && ResourceLoader::is_creating_missing_resources_if_class_unavailable_enabled()) {
 					// If the property being set is a missing resource (and the parent is not),
 					// then setting it will most likely not work.
 					// Instead, save it as metadata.
@@ -878,7 +879,7 @@ Error ResourceLoaderText::load() {
 			*progress = resource_current / float(resources_total);
 		}
 
-		if (missing_resource) {
+		if (missing_resource.is_valid()) {
 			missing_resource->set_recording_properties(false);
 		}
 

@@ -127,19 +127,6 @@ static_assert(__cplusplus >= 201703L, "Minimum of C++17 required.");
 #define _ALLOW_DISCARD_ (void)
 #endif
 
-// Windows badly defines a lot of stuff we'll never use. Undefine it.
-#ifdef _WIN32
-#undef min // override standard definition
-#undef max // override standard definition
-#undef ERROR // override (really stupid) wingdi.h standard definition
-#undef DELETE // override (another really stupid) winnt.h standard definition
-#undef MessageBox // override winuser.h standard definition
-#undef Error
-#undef OK
-#undef CONNECT_DEFERRED // override from Windows SDK, clashes with Object enum
-#undef MONO_FONT
-#endif
-
 // Make room for our constexpr's below by overriding potential system-specific macros.
 #undef SIGN
 #undef MIN
@@ -320,6 +307,22 @@ inline constexpr bool is_zero_constructible_v = is_zero_constructible<T>::value;
 #define GODOT_MSVC_WARNING_IGNORE(m_warning)
 #define GODOT_MSVC_WARNING_POP
 #define GODOT_MSVC_WARNING_PUSH_AND_IGNORE(m_warning)
+#endif
+
+// Deprecation warning suppression helper macros.
+#if defined(__clang__)
+#define GODOT_PUSH_IGNORE_DEPRECATION() GODOT_CLANG_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations")
+#define GODOT_POP_IGNORE_DEPRECATION() GODOT_CLANG_WARNING_POP
+#endif
+
+#if defined(__GNUC__) && !defined(__clang__)
+#define GODOT_PUSH_IGNORE_DEPRECATION() GODOT_GCC_WARNING_PUSH_AND_IGNORE("-Wdeprecated-declarations")
+#define GODOT_POP_IGNORE_DEPRECATION() GODOT_GCC_WARNING_POP
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define GODOT_PUSH_IGNORE_DEPRECATION() GODOT_MSVC_WARNING_PUSH_AND_IGNORE(4996)
+#define GODOT_POP_IGNORE_DEPRECATION() GODOT_MSVC_WARNING_POP
 #endif
 
 template <typename T, typename = void>
