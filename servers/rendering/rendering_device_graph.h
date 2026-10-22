@@ -190,6 +190,8 @@ public:
 		int32_t read_full_command_list_index = -1;
 		int32_t read_slice_command_list_index = -1;
 		int32_t write_command_or_list_index = -1;
+		// The command that carries this frame's latest barrier or layout transition for the resource.
+		int32_t barrier_command_index = -1;
 		int32_t draw_list_index = -1;
 		ResourceUsage draw_list_usage = RESOURCE_USAGE_NONE;
 		int32_t compute_list_index = -1;
@@ -223,6 +225,7 @@ public:
 				read_full_command_list_index = -1;
 				read_slice_command_list_index = -1;
 				write_command_or_list_index = -1;
+				barrier_command_index = -1;
 				draw_list_index = -1;
 				compute_list_index = -1;
 				raytracing_list_index = -1;
