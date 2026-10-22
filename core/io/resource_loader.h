@@ -197,7 +197,6 @@ private:
 		LocalVector<Ref<Resource>> resource_dependencies; // We need to keep these alive for as long as the task is alive at least.
 		ThreadLoadTask *parent_task = nullptr;
 		HashSet<String> sub_tasks;
-		String parent_path;
 
 		bool awaited : 1; // If it's in the pool, this helps not awaiting from more than one dependent thread.
 		bool need_wait : 1;

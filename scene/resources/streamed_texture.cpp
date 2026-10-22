@@ -503,12 +503,12 @@ RID StreamedTexture2D::get_rid() const {
 	return texture;
 }
 
-void StreamedTexture2D::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void StreamedTexture2D::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 void StreamedTexture2D::draw(RID p_canvas_item, const Point2 &p_pos, const Color &p_modulate, bool p_transpose) const {

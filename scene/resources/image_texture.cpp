@@ -217,12 +217,12 @@ void ImageTexture::set_size_override(const Size2i &p_size) {
 	RenderingServer::get_singleton()->texture_set_size_override(texture, w, h);
 }
 
-void ImageTexture::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void ImageTexture::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 void ImageTexture::_bind_methods() {
@@ -357,12 +357,12 @@ RID ImageTextureLayered::get_rid() const {
 	return texture;
 }
 
-void ImageTextureLayered::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void ImageTextureLayered::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RS::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 void ImageTextureLayered::_bind_methods() {
@@ -455,12 +455,12 @@ RID ImageTexture3D::get_rid() const {
 	}
 	return texture;
 }
-void ImageTexture3D::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void ImageTexture3D::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 TypedArray<Image> ImageTexture3D::_get_images() const {

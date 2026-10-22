@@ -1112,9 +1112,9 @@ void GDScript::set_path_cache(const String &p_path) {
 	}
 }
 
-void GDScript::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void GDScript::set_path(const String &p_path, bool p_take_over) {
 	if (is_root_script()) {
-		Script::set_path(p_path, p_take_over, p_lock_cache);
+		Script::set_path(p_path, p_take_over);
 	}
 
 	String old_path = path;
@@ -1131,7 +1131,7 @@ void GDScript::set_path(const String &p_path, bool p_take_over, bool p_lock_cach
 	}
 
 	for (KeyValue<StringName, Ref<GDScript>> &kv : subclasses) {
-		kv.value->set_path(p_path, p_take_over, p_lock_cache);
+		kv.value->set_path(p_path, p_take_over);
 	}
 }
 

@@ -95,12 +95,12 @@ Error CompressedTexture2D::_load_data(const String &p_path, int &r_width, int &r
 	return OK;
 }
 
-void CompressedTexture2D::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void CompressedTexture2D::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 void CompressedTexture2D::_requested_3d(void *p_ud) {
@@ -430,12 +430,12 @@ CompressedTexture2D::~CompressedTexture2D() {
 	}
 }
 
-void CompressedTexture3D::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void CompressedTexture3D::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 Image::Format CompressedTexture3D::get_format() const {
@@ -582,12 +582,12 @@ CompressedTexture3D::~CompressedTexture3D() {
 	}
 }
 
-void CompressedTextureLayered::set_path(const String &p_path, bool p_take_over, bool p_lock_cache) {
+void CompressedTextureLayered::set_path(const String &p_path, bool p_take_over) {
 	if (texture.is_valid()) {
 		RenderingServer::get_singleton()->texture_set_path(texture, p_path);
 	}
 
-	Resource::set_path(p_path, p_take_over, p_lock_cache);
+	Resource::set_path(p_path, p_take_over);
 }
 
 Image::Format CompressedTextureLayered::get_format() const {

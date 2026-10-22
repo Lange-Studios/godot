@@ -543,6 +543,17 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 		MessageQueue::get_singleton()->flush();
 	}
 
+	bool ignoring = load_task.cache_mode == CACHE_MODE_IGNORE || load_task.cache_mode == CACHE_MODE_IGNORE_DEEP;
+	bool replacing = load_task.cache_mode == CACHE_MODE_REPLACE || load_task.cache_mode == CACHE_MODE_REPLACE_DEEP;
+
+	// Query the cache before taking thread_load_mutex, so ResourceCache::lock is never taken while
+	// holding it. Code holding ResourceCache::lock that ends up taking thread_load_mutex (e.g., creating
+	// or setting up a resource under it) would otherwise be able to deadlock against this.
+	Ref<Resource> existing;
+	if (res.is_null() && !ignoring) {
+		existing = ResourceCache::get_ref(load_task.local_path);
+	}
+
 	thread_load_mutex.lock();
 	bool thread_load_mutex_held = true;
 
@@ -556,8 +567,6 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	load_task.progress = 1.0; // It was fully loaded at this point, so force progress to 1.0.
 	load_task.error = load_err;
 
-	bool ignoring = load_task.cache_mode == CACHE_MODE_IGNORE || load_task.cache_mode == CACHE_MODE_IGNORE_DEEP;
-	bool replacing = load_task.cache_mode == CACHE_MODE_REPLACE || load_task.cache_mode == CACHE_MODE_REPLACE_DEEP;
 	if (load_task.resource.is_valid()) {
 		// From now on, no critical section needed as no one will write to the task anymore.
 		// Moreover, the mutex being unlocked is a requirement if some of the calls below
@@ -619,7 +628,6 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 			_loaded_callback(load_task.resource, load_task.local_path);
 		}
 	} else if (!ignoring) {
-		Ref<Resource> existing = ResourceCache::get_ref(load_task.local_path);
 		if (existing.is_valid()) {
 			load_task.resource = existing;
 			load_task.status = THREAD_LOAD_LOADED;
@@ -757,8 +765,10 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 	bool must_not_register = false;
 	ThreadLoadTask *load_task_ptr = nullptr;
 
-	Ref<Resource> existing = nullptr;
-	if (p_cache_mode == ResourceFormatLoader::CACHE_MODE_REUSE) {
+	// Query the cache before taking thread_load_mutex, to always take the two locks in the same order.
+	// See the comment in _run_load_task().
+	Ref<Resource> existing;
+	if (p_cache_mode == CACHE_MODE_REUSE) {
 		existing = ResourceCache::get_ref(local_path);
 	}
 
@@ -803,17 +813,14 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 			load_task.type_hint = p_type_hint;
 			load_task.cache_mode = p_cache_mode;
 			load_task.use_sub_threads = p_thread_mode == LOAD_THREAD_DISTRIBUTE;
-			if (p_cache_mode == CACHE_MODE_REUSE) {
-				Ref<Resource> existing = ResourceCache::get_ref(local_path);
-				if (existing.is_valid()) {
-					//referencing is fine
-					load_task.resource = existing;
-					load_task.status = THREAD_LOAD_LOADED;
-					load_task.progress = 1.0;
-					DEV_ASSERT(!thread_load_tasks.has(local_path));
-					thread_load_tasks[local_path] = load_task;
-					return load_token;
-				}
+			if (existing.is_valid()) {
+				//referencing is fine
+				load_task.resource = existing;
+				load_task.status = THREAD_LOAD_LOADED;
+				load_task.progress = 1.0;
+				DEV_ASSERT(!thread_load_tasks.has(local_path));
+				thread_load_tasks[local_path] = load_task;
+				return load_token;
 			}
 
 			// Task hierarchy
