@@ -599,7 +599,8 @@ void RenderingDeviceGraph::_add_command_to_graph(ResourceTracker **p_resource_tr
 		ResourceTracker *search_tracker = resource_has_parent ? resource_tracker->parent : resource_tracker;
 		bool different_usage = resource_tracker->usage != new_resource_usage;
 		bool write_usage_after_write = (write_usage && search_tracker->write_command_or_list_index >= 0);
-		if (different_usage || write_usage_after_write) {
+		bool barrier_pushed = different_usage || write_usage_after_write;
+		if (barrier_pushed) {
 			// A barrier must be pushed if the usage is different of it's a write usage and there was already a command that wrote to this resource previously.
 			if (resource_tracker->texture_driver_id.id != 0) {
 				if (resource_tracker->usage_access.is_empty()) {
@@ -643,6 +644,16 @@ void RenderingDeviceGraph::_add_command_to_graph(ResourceTracker **p_resource_tr
 			// However, this is not necessary if the driver does not consider different usages as different states (e.g. no image layouts).
 			write_usage = write_usage || (driver_textures_require_layout_transitions && bool(resource_tracker->texture_driver_id)) || driver_buffers_require_transitions;
 			resource_tracker->usage = new_resource_usage;
+		}
+
+		if (barrier_pushed) {
+			resource_tracker->barrier_command_index = p_command_index;
+		} else if (!write_usage && resource_tracker->barrier_command_index >= 0 && resource_tracker->barrier_command_index != p_command_index) {
+			// A read with the same usage as the previous one carries no barrier: it relies on the barrier the command
+			// that changed the usage carries. Readers aren't dependent on each other, so without this the sort could
+			// place it in an earlier level than that command, before the barrier (e.g. a draw list reading an indirect
+			// buffer a compute list just wrote, ahead of the first draw list that read it).
+			_add_adjacent_command(resource_tracker->barrier_command_index, p_command_index, r_command);
 		}
 
 		bool write_usage_has_partial_coverage = !different_usage && _check_command_partial_coverage(resource_tracker, p_command_index);
