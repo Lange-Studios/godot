@@ -31,7 +31,6 @@
 #include "window_wrapper.h"
 
 #include "core/object/callable_mp.h"
-#include "core/object/class_db.h" // IWYU pragma: keep. `ADD_SIGNAL` macro.
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/gui/progress_dialog.h"
@@ -342,6 +341,7 @@ WindowWrapper::WindowWrapper() {
 
 	window->connect("close_requested", callable_mp(this, &WindowWrapper::_window_close_request));
 	window->connect("size_changed", callable_mp(this, &WindowWrapper::_window_size_changed));
+	window->connect("files_dropped", callable_mp(EditorNode::get_singleton(), &EditorNode::_dropped_files));
 
 	window_background = memnew(Panel);
 	window_background->set_anchors_and_offsets_preset(PRESET_FULL_RECT);

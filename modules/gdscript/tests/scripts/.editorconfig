@@ -1,5 +1,3 @@
-# This file is required to workaround `.editorconfig` autogeneration (see #96845).
-
 # Some tests handle invalid syntax deliberately; exclude relevant attributes.
 # See also the `file-format` section in `.pre-commit-config.yaml`.
 

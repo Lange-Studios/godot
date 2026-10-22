@@ -36,6 +36,7 @@
 #include "core/io/file_access.h"
 #include "core/object/class_db.h"
 #include "core/os/os.h"
+#include "editor/export/android_sdk_manager.h"
 #include "main/main.h"
 
 EditorPaths *EditorPaths::singleton = nullptr;
@@ -82,6 +83,15 @@ String EditorPaths::get_debug_keystore_path() const {
 #else
 	return get_data_dir().path_join("keystores/debug.keystore");
 #endif
+}
+
+String EditorPaths::get_default_android_sdk_path() const {
+	return get_data_dir().path_join("android-sdk");
+}
+
+String EditorPaths::get_default_java_sdk_path() const {
+	String java_sdk_dir = "java-sdk-" + String::num_uint64(AndroidSDKManager::DEFAULT_JAVA_VERSION);
+	return get_data_dir().path_join(java_sdk_dir);
 }
 
 // This returns paths like "res://.godot/editor".
@@ -276,22 +286,6 @@ EditorPaths::EditorPaths() {
 			} else {
 				ERR_PRINT("Failed to create file " + project_data_gdignore_file_path.quote() + ".");
 			}
-		}
-
-		// Check that `.editorconfig` file exists.
-		String project_editorconfig_path = "res://.editorconfig";
-		if (!FileAccess::exists(project_editorconfig_path)) {
-			Ref<FileAccess> f = FileAccess::open(project_editorconfig_path, FileAccess::WRITE);
-			if (f.is_valid()) {
-				f->store_line("root = true");
-				f->store_line("");
-				f->store_line("[*]");
-				f->store_line("charset = utf-8");
-				f->close();
-			} else {
-				ERR_PRINT("Failed to create file " + project_editorconfig_path.quote() + ".");
-			}
-			FileAccess::set_hidden_attribute(project_editorconfig_path, true);
 		}
 
 		Engine::get_singleton()->set_shader_cache_path(project_data_dir);
