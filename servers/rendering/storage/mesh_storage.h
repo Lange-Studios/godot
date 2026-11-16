@@ -154,6 +154,8 @@ public:
 
 	virtual void multimesh_set_buffer(RID p_multimesh, const Vector<float> &p_buffer);
 	virtual RID multimesh_get_command_buffer_rd_rid(RID p_multimesh) const;
+	virtual void multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count);
+	virtual int multimesh_get_indirect_draw_count(RID p_multimesh) const;
 	virtual RID multimesh_get_buffer_rd_rid(RID p_multimesh) const;
 	virtual Vector<float> multimesh_get_buffer(RID p_multimesh) const;
 
@@ -194,6 +196,8 @@ public:
 
 	virtual void _multimesh_set_buffer(RID p_multimesh, const Vector<float> &p_buffer) = 0;
 	virtual RID _multimesh_get_command_buffer_rd_rid(RID p_multimesh) const = 0;
+	virtual void _multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count) = 0;
+	virtual int _multimesh_get_indirect_draw_count(RID p_multimesh) const = 0;
 	virtual RID _multimesh_get_buffer_rd_rid(RID p_multimesh) const = 0;
 	virtual Vector<float> _multimesh_get_buffer(RID p_multimesh) const = 0;
 

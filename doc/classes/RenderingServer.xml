@@ -2822,6 +2822,7 @@
 				  3 - firstInstance;
 				  4 - unused;
 				[/codeblock]
+				Each surface has as many consecutive commands as [method multimesh_get_indirect_draw_count] returns (1 by default): the commands of surface [code]s[/code] start at byte [code]s * draw_count * 20[/code].
 			</description>
 		</method>
 		<method name="multimesh_get_custom_aabb" qualifiers="const">
@@ -2829,6 +2830,13 @@
 			<param index="0" name="multimesh" type="RID" />
 			<description>
 				Returns the custom AABB defined for this MultiMesh resource.
+			</description>
+		</method>
+		<method name="multimesh_get_indirect_draw_count" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="multimesh" type="RID" />
+			<description>
+				Returns the number of indirect draw commands per surface of this multimesh. See [method multimesh_set_indirect_draw_count].
 			</description>
 		</method>
 		<method name="multimesh_get_instance_count" qualifiers="const">
@@ -2977,6 +2985,16 @@
 			<param index="1" name="aabb" type="AABB" />
 			<description>
 				Sets the custom AABB for this MultiMesh resource.
+			</description>
+		</method>
+		<method name="multimesh_set_indirect_draw_count">
+			<return type="void" />
+			<param index="0" name="multimesh" type="RID" />
+			<param index="1" name="draw_count" type="int" />
+			<description>
+				Sets how many indirect draw commands each surface of this multimesh draws in one multi-draw call (default: [code]1[/code]). Only used if [code]use_indirect[/code] is [code]true[/code] in [method multimesh_allocate_data]. The command buffer (see [method multimesh_get_command_buffer_rd_rid]) then holds [param draw_count] consecutive commands per surface. Godot only writes the first command of each surface (its vertex or index count, and the instance count in [method multimesh_set_visible_instances]); the other commands start zeroed, so they draw nothing until written on the GPU. Each command can draw its own index range, vertex offset and instance range of the surface, so one multimesh can draw many different meshes stored in the same surface in a single draw call.
+				Changing the draw count recreates the command buffer, discarding its contents (as does changing the mesh or calling [method multimesh_allocate_data]).
+				[b]Note:[/b] Only supported in the Forward+ and Mobile rendering methods. Drawing more than one command needs the [code]multiDrawIndirect[/code] device feature on Vulkan.
 			</description>
 		</method>
 		<method name="multimesh_set_mesh">
