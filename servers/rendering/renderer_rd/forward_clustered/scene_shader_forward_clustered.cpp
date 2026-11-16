@@ -64,6 +64,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	uses_alpha_antialiasing = false;
 	uses_blend_alpha = false;
 	uses_depth_prepass_alpha = false;
+	depth_prepass_disabled = false;
 	uses_discard = false;
 	uses_roughness = false;
 	uses_normal = false;
@@ -128,6 +129,7 @@ void SceneShaderForwardClustered::ShaderData::set_code(const String &p_code) {
 	actions.usage_flag_pointers["ALPHA_ANTIALIASING_EDGE"] = &uses_alpha_antialiasing;
 	actions.usage_flag_pointers["ALPHA_TEXTURE_COORDINATE"] = &uses_alpha_antialiasing;
 	actions.render_mode_flags["depth_prepass_alpha"] = &uses_depth_prepass_alpha;
+	actions.render_mode_flags["depth_prepass_disabled"] = &depth_prepass_disabled;
 
 	actions.usage_flag_pointers["SSS_STRENGTH"] = &uses_sss;
 	actions.usage_flag_pointers["SSS_TRANSMITTANCE_DEPTH"] = &uses_transmittance;
@@ -449,7 +451,7 @@ void SceneShaderForwardClustered::ShaderData::_create_pipeline(PipelineKey p_pip
 		} else {
 			blend_state = blend_state_color_opaque;
 
-			if (depth_pre_pass_enabled) {
+			if (depth_pre_pass_enabled && !depth_prepass_disabled) {
 				// We already have a depth from the depth pre-pass, there is no need to write it again.
 				// In addition we can use COMPARE_OP_EQUAL instead of COMPARE_OP_LESS_OR_EQUAL.
 				// This way we can use the early depth test to discard transparent fragments before the fragment shader even starts.
@@ -878,6 +880,7 @@ void SceneShaderForwardClustered::init(const String p_defines) {
 
 		actions.render_mode_defines["depth_draw_never"] = "#define DEPTH_DRAW_NEVER_USED\n";
 		actions.render_mode_defines["depth_draw_always"] = "#define DEPTH_DRAW_ALWAYS_USED\n";
+		actions.render_mode_defines["depth_prepass_disabled"] = "#define DEPTH_PREPASS_DISABLED_USED\n";
 		actions.render_mode_defines["depth_test_disabled"] = "#define DEPTH_TEST_DISABLED_USED\n";
 		actions.stencil_mode_defines["write"] = "#define STENCIL_WRITE_USED\n";
 		actions.stencil_mode_defines["write_depth_fail"] = "#define STENCIL_WRITE_USED\n";
