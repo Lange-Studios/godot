@@ -1910,18 +1910,20 @@ void MeshStorage::_multimesh_create_indirect_command_buffer(MultiMesh *multimesh
 	if (mesh->surface_count == 0) {
 		return;
 	}
+	// Each surface has `indirect_draw_count` consecutive commands; only the first one is initialized.
+	const uint32_t surface_commands_size = sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE * multimesh->indirect_draw_count;
 	Vector<uint8_t> new_vector;
-	new_vector.resize_initialized(sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE * mesh->surface_count);
+	new_vector.resize_initialized(surface_commands_size * mesh->surface_count);
 
 	for (uint32_t i = 0; i < mesh->surface_count; i++) {
 		uint32_t count = mesh_surface_get_vertices_drawn_count(mesh->surfaces[i]);
-		new_vector.set(i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE, static_cast<uint8_t>(count));
-		new_vector.set(i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE + 1, static_cast<uint8_t>(count >> 8));
-		new_vector.set(i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE + 2, static_cast<uint8_t>(count >> 16));
-		new_vector.set(i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE + 3, static_cast<uint8_t>(count >> 24));
+		new_vector.set(i * surface_commands_size, static_cast<uint8_t>(count));
+		new_vector.set(i * surface_commands_size + 1, static_cast<uint8_t>(count >> 8));
+		new_vector.set(i * surface_commands_size + 2, static_cast<uint8_t>(count >> 16));
+		new_vector.set(i * surface_commands_size + 3, static_cast<uint8_t>(count >> 24));
 	}
 
-	RID new_buffer = RD::get_singleton()->storage_buffer_create(sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE * mesh->surface_count, new_vector, RD::STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT);
+	RID new_buffer = RD::get_singleton()->storage_buffer_create(surface_commands_size * mesh->surface_count, new_vector, RD::STORAGE_BUFFER_USAGE_DISPATCH_INDIRECT);
 	multimesh->command_buffer = new_buffer;
 }
 
@@ -2204,6 +2206,28 @@ RID MeshStorage::_multimesh_get_command_buffer_rd_rid(RID p_multimesh) const {
 	return multimesh->command_buffer;
 }
 
+void MeshStorage::_multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count) {
+	MultiMesh *multimesh = multimesh_owner.get_or_null(p_multimesh);
+	ERR_FAIL_NULL(multimesh);
+	ERR_FAIL_COND_MSG(p_draw_count < 1, "The indirect draw count must be at least 1.");
+	if (multimesh->indirect_draw_count == uint32_t(p_draw_count)) {
+		return;
+	}
+	multimesh->indirect_draw_count = p_draw_count;
+
+	if (multimesh->command_buffer.is_valid()) {
+		RD::get_singleton()->free_rid(multimesh->command_buffer);
+		multimesh->command_buffer = RID();
+		_multimesh_create_indirect_command_buffer(multimesh);
+	}
+}
+
+int MeshStorage::_multimesh_get_indirect_draw_count(RID p_multimesh) const {
+	MultiMesh *multimesh = multimesh_owner.get_or_null(p_multimesh);
+	ERR_FAIL_NULL_V(multimesh, 1);
+	return multimesh->indirect_draw_count;
+}
+
 RID MeshStorage::_multimesh_get_buffer_rd_rid(RID p_multimesh) const {
 	MultiMesh *multimesh = multimesh_owner.get_or_null(p_multimesh);
 	ERR_FAIL_NULL_V(multimesh, RID());
@@ -2255,7 +2279,7 @@ void MeshStorage::_multimesh_set_visible_instances(RID p_multimesh, int p_visibl
 		Mesh *mesh = mesh_owner.get_or_null(multimesh->mesh);
 		if (mesh != nullptr) {
 			for (uint32_t i = 0; i < mesh->surface_count; i++) {
-				RD::get_singleton()->buffer_update(multimesh->command_buffer, (i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE) + sizeof(uint32_t), sizeof(uint32_t), &p_visible);
+				RD::get_singleton()->buffer_update(multimesh->command_buffer, (i * sizeof(uint32_t) * INDIRECT_MULTIMESH_COMMAND_STRIDE * multimesh->indirect_draw_count) + sizeof(uint32_t), sizeof(uint32_t), &p_visible);
 			}
 		}
 	}

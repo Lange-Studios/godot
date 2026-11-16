@@ -255,6 +255,14 @@ RID RendererMeshStorage::multimesh_get_command_buffer_rd_rid(RID p_multimesh) co
 	return _multimesh_get_command_buffer_rd_rid(p_multimesh);
 }
 
+void RendererMeshStorage::multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count) {
+	_multimesh_set_indirect_draw_count(p_multimesh, p_draw_count);
+}
+
+int RendererMeshStorage::multimesh_get_indirect_draw_count(RID p_multimesh) const {
+	return _multimesh_get_indirect_draw_count(p_multimesh);
+}
+
 RID RendererMeshStorage::multimesh_get_buffer_rd_rid(RID p_multimesh) const {
 	return _multimesh_get_buffer_rd_rid(p_multimesh);
 }

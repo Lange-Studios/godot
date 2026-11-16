@@ -2126,6 +2126,14 @@ RID MeshStorage::_multimesh_get_command_buffer_rd_rid(RID p_multimesh) const {
 	ERR_FAIL_V_MSG(RID(), "GLES3 does not implement indirect multimeshes.");
 }
 
+void MeshStorage::_multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count) {
+	ERR_FAIL_MSG("GLES3 does not implement indirect multimeshes.");
+}
+
+int MeshStorage::_multimesh_get_indirect_draw_count(RID p_multimesh) const {
+	return 1;
+}
+
 RID MeshStorage::_multimesh_get_buffer_rd_rid(RID p_multimesh) const {
 	ERR_FAIL_V_MSG(RID(), "GLES3 does not contain a Rid for the multimesh buffer.");
 }

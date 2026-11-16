@@ -238,6 +238,7 @@ private:
 		bool aabb_dirty = false;
 		bool buffer_set = false;
 		bool indirect = false;
+		uint32_t indirect_draw_count = 1;
 		bool motion_vectors_enabled = false;
 		uint32_t motion_vectors_current_offset = 0;
 		uint32_t motion_vectors_previous_offset = 0;
@@ -682,6 +683,8 @@ public:
 
 	virtual void _multimesh_set_buffer(RID p_multimesh, const Vector<float> &p_buffer) override;
 	virtual RID _multimesh_get_command_buffer_rd_rid(RID p_multimesh) const override;
+	virtual void _multimesh_set_indirect_draw_count(RID p_multimesh, int p_draw_count) override;
+	virtual int _multimesh_get_indirect_draw_count(RID p_multimesh) const override;
 	virtual RID _multimesh_get_buffer_rd_rid(RID p_multimesh) const override;
 	virtual Vector<float> _multimesh_get_buffer(RID p_multimesh) const override;
 
