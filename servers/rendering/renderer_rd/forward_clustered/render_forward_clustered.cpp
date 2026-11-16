@@ -356,6 +356,13 @@ void RenderForwardClustered::_render_list_template(RenderingDevice::DrawListID p
 			continue;
 		}
 
+		if constexpr (p_pass_mode == PASS_MODE_DEPTH || p_pass_mode == PASS_MODE_DEPTH_NORMAL_ROUGHNESS || p_pass_mode == PASS_MODE_DEPTH_NORMAL_ROUGHNESS_VOXEL_GI) {
+			if (surf->flags & GeometryInstanceSurfaceDataCache::FLAG_SKIP_DEPTH_PREPASS) {
+				// Excluded from the depth pre-pass; drawn in the color pass with a regular depth test and write instead.
+				continue;
+			}
+		}
+
 		if (surf->owner->instance_count == 0) {
 			continue;
 		}
@@ -4330,6 +4337,10 @@ void RenderForwardClustered::_geometry_instance_add_surface_with_material(Geomet
 		flags |= GeometryInstanceSurfaceDataCache::FLAG_PASS_OPAQUE;
 		flags |= GeometryInstanceSurfaceDataCache::FLAG_PASS_DEPTH;
 		flags |= GeometryInstanceSurfaceDataCache::FLAG_PASS_SHADOW;
+		if (p_material->shader_data->depth_prepass_disabled) {
+			// Drawn once, in the opaque color pass, which then tests and writes depth itself.
+			flags |= GeometryInstanceSurfaceDataCache::FLAG_SKIP_DEPTH_PREPASS;
+		}
 	}
 
 	if (p_material->shader_data->uses_particle_trails) {
