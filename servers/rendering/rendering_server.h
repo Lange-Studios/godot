@@ -63,8 +63,6 @@ struct MeshData;
 
 class RenderingDevice;
 
-class VisibilityCullerExtension;
-
 class RenderingServer : public Object {
 	GDCLASS(RenderingServer, Object);
 
@@ -535,10 +533,6 @@ public:
 
 	virtual RID occluder_create() = 0;
 	virtual void occluder_set_mesh(RID p_occluder, const PackedVector3Array &p_vertices, const PackedInt32Array &p_indices) = 0;
-
-	/* VISIBILITY CULLER API */
-
-	virtual void set_visibility_culler(const Ref<VisibilityCullerExtension> &p_culler) = 0;
 
 	/* CAMERA API */
 

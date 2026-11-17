@@ -736,9 +736,6 @@ public:
 	FUNCRIDSPLIT(occluder)
 	FUNC3(occluder_set_mesh, RID, const PackedVector3Array &, const PackedInt32Array &)
 
-	/* VISIBILITY CULLER */
-	FUNC1(set_visibility_culler, const Ref<VisibilityCullerExtension> &)
-
 #undef server_name
 #undef ServerName
 //from now on, calls forwarded to this singleton

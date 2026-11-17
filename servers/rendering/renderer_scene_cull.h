@@ -131,10 +131,6 @@ public:
 	virtual void occluder_initialize(RID p_occluder);
 	virtual void occluder_set_mesh(RID p_occluder, const PackedVector3Array &p_vertices, const PackedInt32Array &p_indices);
 
-	/* VISIBILITY CULLER API */
-
-	virtual void set_visibility_culler(const Ref<VisibilityCullerExtension> &p_culler);
-
 	/* VISIBILITY NOTIFIER API */
 
 	RendererSceneOcclusionCull *dummy_occlusion_culling = nullptr;
@@ -886,7 +882,6 @@ public:
 	PagedArrayPool<Instance *> instance_cull_page_pool;
 	PagedArrayPool<RenderGeometryInstance *> geometry_instance_cull_page_pool;
 	PagedArrayPool<RID> rid_cull_page_pool;
-	PagedArrayPool<uint32_t> instance_index_cull_page_pool;
 
 	PagedArray<Instance *> instance_cull_result;
 	PagedArray<Instance *> instance_shadow_cull_result;
@@ -901,13 +896,9 @@ public:
 		PagedArray<RID> voxel_gi_instances;
 		PagedArray<RID> mesh_instances;
 		PagedArray<RID> fog_volumes;
-		// With a visibility culler set: the geometry that passed Godot's culling and waits for the
-		// culler's verdict before joining geometry_instances (indices in the scenario's instance_data).
-		PagedArray<uint32_t> visibility_candidates;
 
 		struct DirectionalShadow {
 			PagedArray<RenderGeometryInstance *> cascade_geometry_instances[RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES];
-			PagedArray<uint32_t> cascade_visibility_candidates[RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES];
 		} directional_shadows[RendererSceneRender::MAX_DIRECTIONAL_LIGHTS];
 
 		PagedArray<RenderGeometryInstance *> sdfgi_region_geometry_instances[SDFGI_MAX_CASCADES * SDFGI_MAX_REGIONS_PER_CASCADE];
@@ -923,11 +914,9 @@ public:
 			voxel_gi_instances.clear();
 			mesh_instances.clear();
 			fog_volumes.clear();
-			visibility_candidates.clear();
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
 					directional_shadows[i].cascade_geometry_instances[j].clear();
-					directional_shadows[i].cascade_visibility_candidates[j].clear();
 				}
 			}
 
@@ -950,11 +939,9 @@ public:
 			voxel_gi_instances.reset();
 			mesh_instances.reset();
 			fog_volumes.reset();
-			visibility_candidates.reset();
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
 					directional_shadows[i].cascade_geometry_instances[j].reset();
-					directional_shadows[i].cascade_visibility_candidates[j].reset();
 				}
 			}
 
@@ -977,12 +964,10 @@ public:
 			voxel_gi_instances.merge_unordered(p_cull_result.voxel_gi_instances);
 			mesh_instances.merge_unordered(p_cull_result.mesh_instances);
 			fog_volumes.merge_unordered(p_cull_result.fog_volumes);
-			visibility_candidates.merge_unordered(p_cull_result.visibility_candidates);
 
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
 					directional_shadows[i].cascade_geometry_instances[j].merge_unordered(p_cull_result.directional_shadows[i].cascade_geometry_instances[j]);
-					directional_shadows[i].cascade_visibility_candidates[j].merge_unordered(p_cull_result.directional_shadows[i].cascade_visibility_candidates[j]);
 				}
 			}
 
@@ -995,9 +980,8 @@ public:
 			}
 		}
 
-		void init(PagedArrayPool<RID> *p_rid_pool, PagedArrayPool<RenderGeometryInstance *> *p_geometry_instance_pool, PagedArrayPool<Instance *> *p_instance_pool, PagedArrayPool<uint32_t> *p_instance_index_pool) {
+		void init(PagedArrayPool<RID> *p_rid_pool, PagedArrayPool<RenderGeometryInstance *> *p_geometry_instance_pool, PagedArrayPool<Instance *> *p_instance_pool) {
 			geometry_instances.set_page_pool(p_geometry_instance_pool);
-			visibility_candidates.set_page_pool(p_instance_index_pool);
 			light_instances.set_page_pool(p_rid_pool);
 			lights.set_page_pool(p_instance_pool);
 			lightmaps.set_page_pool(p_rid_pool);
@@ -1009,7 +993,6 @@ public:
 			for (int i = 0; i < RendererSceneRender::MAX_DIRECTIONAL_LIGHTS; i++) {
 				for (int j = 0; j < RendererSceneRender::MAX_DIRECTIONAL_LIGHT_CASCADES; j++) {
 					directional_shadows[i].cascade_geometry_instances[j].set_page_pool(p_geometry_instance_pool);
-					directional_shadows[i].cascade_visibility_candidates[j].set_page_pool(p_instance_index_pool);
 				}
 			}
 
@@ -1040,16 +1023,6 @@ public:
 
 	LocalVector<Vector2> camera_jitter_array;
 	RenderingLightCuller *light_culler = nullptr;
-
-	// The visibility culler, only read and written on the rendering thread.
-	Ref<VisibilityCullerExtension> visibility_culler;
-	LocalVector<InstanceBounds> visibility_cull_bounds;
-	LocalVector<uint8_t> visibility_cull_mask;
-
-	// Asks the visibility culler about visibility_cull_bounds, filling visibility_cull_mask.
-	void _visibility_cull(VisibilityCullerExtension::Pass p_pass, RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection);
-	void _visibility_cull_candidates(Scenario *p_scenario, PagedArray<uint32_t> &p_candidates, PagedArray<RenderGeometryInstance *> &r_visible, VisibilityCullerExtension::Pass p_pass, RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection);
-	void _visibility_cull_shadow_instances(RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection);
 
 	virtual RID instance_allocate();
 	virtual void instance_initialize(RID p_rid);
@@ -1111,7 +1084,7 @@ public:
 
 	void _light_instance_setup_directional_shadow(int p_shadow_index, Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect);
 
-	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, RID p_viewport, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers = 0xFFFFFF);
+	_FORCE_INLINE_ bool _light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers = 0xFFFFFF);
 
 	RID _render_get_environment(RID p_camera, RID p_scenario);
 	RID _render_get_compositor(RID p_camera, RID p_scenario);
@@ -1119,7 +1092,6 @@ public:
 	struct Cull {
 		struct Shadow {
 			RID light_instance;
-			RID instance; // The light's scenario instance.
 			uint32_t caster_mask;
 			struct Cascade {
 				Frustum frustum;
@@ -1179,7 +1151,6 @@ public:
 		const RendererSceneOcclusionCull::HZBuffer *occlusion_buffer;
 		const Projection *camera_matrix;
 		uint64_t visibility_viewport_mask;
-		bool use_visibility_culler = false;
 	};
 
 	void _scene_cull_threaded(uint32_t p_thread, CullData *cull_data);

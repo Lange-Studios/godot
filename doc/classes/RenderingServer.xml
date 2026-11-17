@@ -3687,13 +3687,6 @@
 				Sets the default clear color which is used when a specific clear color has not been selected. See also [method get_default_clear_color].
 			</description>
 		</method>
-		<method name="set_visibility_culler">
-			<return type="void" />
-			<param index="0" name="culler" type="VisibilityCullerExtension" />
-			<description>
-				Sets the [VisibilityCullerExtension] that every 3D cull pass asks which of its instances to hide, or removes it with [code]null[/code]. There is one for all viewports.
-			</description>
-		</method>
 		<method name="shader_create">
 			<return type="RID" />
 			<description>
