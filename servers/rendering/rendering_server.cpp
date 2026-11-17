@@ -39,6 +39,7 @@
 #include "servers/rendering/rendering_device.h"
 #include "servers/rendering/rendering_server_types.h"
 #include "servers/rendering/shader_language.h"
+#include "servers/rendering/visibility_culler_extension.h"
 #include "servers/rendering/shader_warnings.h"
 
 RenderingServer *RenderingServer::singleton = nullptr;
@@ -2845,6 +2846,10 @@ void RenderingServer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("occluder_create"), &RenderingServer::occluder_create);
 	ClassDB::bind_method(D_METHOD("occluder_set_mesh", "occluder", "vertices", "indices"), &RenderingServer::occluder_set_mesh);
+
+	/* VISIBILITY CULLER */
+
+	ClassDB::bind_method(D_METHOD("set_visibility_culler", "culler"), &RenderingServer::set_visibility_culler);
 
 	/* CAMERA */
 

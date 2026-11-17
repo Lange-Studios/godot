@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="VisibilityCullerExtension" inherits="RefCounted" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		Lets a GDExtension hide 3D instances that passed Godot's own culling.
+	</brief_description>
+	<description>
+		Implement [method _cull] in a GDExtension and register the culler with [method RenderingServer.set_visibility_culler] to add your own culling (for example occlusion culling against a depth buffer from a previous frame) to every 3D cull pass: the camera pass of each viewport, each directional shadow cascade and each positional shadow pass.
+		The culler only sees geometry instances that passed Godot's culling (layers, frustum, visibility ranges) and can only hide them. Instances with [member GeometryInstance3D.ignore_occlusion_culling] enabled, or with [method RenderingServer.instance_set_ignore_culling] enabled, are never passed to it. Lights, decals, reflection probes and other non-geometry instances aren't either, nor are the passes that render reflection probes.
+		[b]Note:[/b] [method _cull] is called on the rendering thread (see [member ProjectSettings.rendering/driver/threads/thread_model]), one pass after another, never concurrently.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="_cull" qualifiers="virtual">
+			<return type="void" />
+			<param index="0" name="pass" type="int" />
+			<param index="1" name="viewport" type="RID" />
+			<param index="2" name="light" type="RID" />
+			<param index="3" name="index" type="int" />
+			<param index="4" name="transform" type="Transform3D" />
+			<param index="5" name="projection" type="Projection" />
+			<param index="6" name="bounds" type="const float*" />
+			<param index="7" name="count" type="int" />
+			<param index="8" name="visible" type="uint8_t*" />
+			<description>
+				Called once per cull pass with the [param count] instances that passed Godot's culling in this pass. [param pass] is a [enum Pass] value, [param viewport] the viewport being rendered.
+				For shadow passes, [param light] is the light's instance RID (as returned by [method VisualInstance3D.get_instance]) and [param index] the cascade ([constant PASS_DIRECTIONAL_SHADOW]), the cube map face or paraboloid half (omni lights) or [code]0[/code]. [param light] is empty and [param index] [code]0[/code] for [constant PASS_CAMERA].
+				[param transform] and [param projection] are the pass's camera or shadow camera. Omni lights using dual paraboloid shadows and area lights pass an identity [param projection].
+				[param bounds] holds 6 [float]s per instance, its world-space axis-aligned bounding box: minimum x, y and z, then maximum x, y and z ([code]double[/code]s in double precision builds). [param visible] holds one byte per instance, all [code]1[/code] on entry: set an instance's byte to [code]0[/code] to leave it out of this pass. Both pointers are only valid during the call.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="PASS_CAMERA" value="0" enum="Pass">
+			The camera pass of a viewport.
+		</constant>
+		<constant name="PASS_DIRECTIONAL_SHADOW" value="1" enum="Pass">
+			A directional light's shadow cascade.
+		</constant>
+		<constant name="PASS_POSITIONAL_SHADOW" value="2" enum="Pass">
+			An omni, spot or area light's shadow pass. Positional shadows are only redrawn when they change, so an instance hidden here can stay missing from the shadow until its next update.
+		</constant>
+	</constants>
+</class>
