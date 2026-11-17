@@ -34,6 +34,7 @@
 #include "core/variant/variant.h"
 #include "servers/rendering/rendering_server_enums.h"
 #include "servers/rendering/rendering_server_types.h"
+#include "servers/rendering/visibility_culler_extension.h"
 
 #ifdef XR_DISABLED
 // RendererSceneCull::render_camera is empty when XR is disabled, but
@@ -69,6 +70,8 @@ public:
 	virtual RID occluder_allocate() = 0;
 	virtual void occluder_initialize(RID p_occluder) = 0;
 	virtual void occluder_set_mesh(RID p_occluder, const PackedVector3Array &p_vertices, const PackedInt32Array &p_indices) = 0;
+
+	virtual void set_visibility_culler(const Ref<VisibilityCullerExtension> &p_culler) = 0;
 
 	virtual RID scenario_allocate() = 0;
 	virtual void scenario_initialize(RID p_rid) = 0;

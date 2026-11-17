@@ -204,6 +204,64 @@ void RendererSceneCull::occluder_set_mesh(RID p_occluder, const PackedVector3Arr
 	RendererSceneOcclusionCull::get_singleton()->occluder_set_mesh(p_occluder, p_vertices, p_indices);
 }
 
+/* VISIBILITY CULLER API */
+
+void RendererSceneCull::set_visibility_culler(const Ref<VisibilityCullerExtension> &p_culler) {
+	visibility_culler = p_culler;
+}
+
+void RendererSceneCull::_visibility_cull(VisibilityCullerExtension::Pass p_pass, RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection) {
+	uint32_t count = visibility_cull_bounds.size();
+	visibility_cull_mask.resize(count);
+	if (count > 0) {
+		memset(visibility_cull_mask.ptr(), 1, count);
+		static_assert(sizeof(InstanceBounds) == 6 * sizeof(real_t));
+		visibility_culler->cull(p_pass, p_viewport, p_light, p_index, p_transform, p_projection, visibility_cull_bounds[0].bounds, count, visibility_cull_mask.ptr());
+	}
+}
+
+void RendererSceneCull::_visibility_cull_candidates(Scenario *p_scenario, PagedArray<uint32_t> &p_candidates, PagedArray<RenderGeometryInstance *> &r_visible, VisibilityCullerExtension::Pass p_pass, RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection) {
+	uint32_t count = p_candidates.size();
+	visibility_cull_bounds.resize(count);
+	for (uint32_t i = 0; i < count; i++) {
+		visibility_cull_bounds[i] = p_scenario->instance_aabbs[p_candidates[i]];
+	}
+	_visibility_cull(p_pass, p_viewport, p_light, p_index, p_transform, p_projection);
+	for (uint32_t i = 0; i < count; i++) {
+		if (visibility_cull_mask[i]) {
+			r_visible.push_back(p_scenario->instance_data[p_candidates[i]].instance_geometry);
+		}
+	}
+	p_candidates.clear();
+}
+
+void RendererSceneCull::_visibility_cull_shadow_instances(RID p_viewport, RID p_light, int p_index, const Transform3D &p_transform, const Projection &p_projection) {
+	if (visibility_culler.is_null() || p_viewport.is_null()) {
+		return;
+	}
+	uint32_t count = instance_shadow_cull_result.size();
+	visibility_cull_bounds.clear();
+	for (uint32_t i = 0; i < count; i++) {
+		const Instance *instance = instance_shadow_cull_result[i];
+		if (!instance->ignore_occlusion_culling && !instance->ignore_all_culling) {
+			visibility_cull_bounds.push_back(InstanceBounds(instance->transformed_aabb));
+		}
+	}
+	_visibility_cull(VisibilityCullerExtension::PASS_POSITIONAL_SHADOW, p_viewport, p_light, p_index, p_transform, p_projection);
+	// Keep the order, dropping the instances the culler hid.
+	uint32_t candidate = 0;
+	uint32_t kept = 0;
+	for (uint32_t i = 0; i < count; i++) {
+		Instance *instance = instance_shadow_cull_result[i];
+		if (instance->ignore_occlusion_culling || instance->ignore_all_culling || visibility_cull_mask[candidate++]) {
+			instance_shadow_cull_result[kept++] = instance;
+		}
+	}
+	while (instance_shadow_cull_result.size() > kept) {
+		instance_shadow_cull_result.pop_back();
+	}
+}
+
 /* SCENARIO API */
 
 void RendererSceneCull::_instance_pair(Instance *p_A, Instance *p_B) {
@@ -2225,6 +2283,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
 	cull.shadow_count = p_shadow_index + 1;
 	cull.shadows[p_shadow_index].cascade_count = splits;
 	cull.shadows[p_shadow_index].light_instance = light->instance;
+	cull.shadows[p_shadow_index].instance = p_instance->self;
 	cull.shadows[p_shadow_index].caster_mask = RSG::light_storage->light_get_shadow_caster_mask(p_instance->base);
 
 	for (int i = 0; i < splits; i++) {
@@ -2399,7 +2458,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
 	}
 }
 
-bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers) {
+bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, RID p_viewport, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers) {
 	InstanceLightData *light = static_cast<InstanceLightData *>(p_instance->base_data);
 
 	Transform3D light_transform = p_instance->transform;
@@ -2456,6 +2515,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 					if (!light->is_shadow_update_full()) {
 						light_culler->cull_regular_light(instance_shadow_cull_result);
 					}
+					_visibility_cull_shadow_instances(p_viewport, p_instance->self, i, light_transform, Projection());
 
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
@@ -2540,6 +2600,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 					if (!light->is_shadow_update_full()) {
 						light_culler->cull_regular_light(instance_shadow_cull_result);
 					}
+					_visibility_cull_shadow_instances(p_viewport, p_instance->self, i, xform, cm);
 
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
@@ -2609,6 +2670,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 			if (!light->is_shadow_update_full()) {
 				light_culler->cull_regular_light(instance_shadow_cull_result);
 			}
+			_visibility_cull_shadow_instances(p_viewport, p_instance->self, 0, light_transform, cm);
 
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
@@ -2676,6 +2738,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 			if (!light->is_shadow_update_full()) {
 				light_culler->cull_regular_light(instance_shadow_cull_result);
 			}
+			_visibility_cull_shadow_instances(p_viewport, p_instance->self, 0, light_transform, Projection());
 
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
@@ -3259,7 +3322,11 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 					}
 
 					if (keep) {
-						cull_result.geometry_instances.push_back(idata.instance_geometry);
+						if (cull_data.use_visibility_culler && !(idata.flags & (InstanceData::FLAG_IGNORE_OCCLUSION_CULLING | InstanceData::FLAG_IGNORE_ALL_CULLING))) {
+							cull_result.visibility_candidates.push_back(i);
+						} else {
+							cull_result.geometry_instances.push_back(idata.instance_geometry);
+						}
 					}
 				}
 			}
@@ -3274,7 +3341,11 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 
 						const bool is_inactive_particle = (base_type == RSE::INSTANCE_PARTICLES) && RSG::particles_storage->particles_is_inactive(idata.base_rid);
 						if (((1 << base_type) & RSE::INSTANCE_GEOMETRY_MASK) && idata.flags & InstanceData::FLAG_CAST_SHADOWS && (LAYER_CHECK & cull_data.cull->shadows[j].caster_mask) && !is_inactive_particle) {
-							cull_result.directional_shadows[j].cascade_geometry_instances[k].push_back(idata.instance_geometry);
+							if (cull_data.use_visibility_culler && !(idata.flags & (InstanceData::FLAG_IGNORE_OCCLUSION_CULLING | InstanceData::FLAG_IGNORE_ALL_CULLING))) {
+								cull_result.directional_shadows[j].cascade_visibility_candidates[k].push_back(i);
+							} else {
+								cull_result.directional_shadows[j].cascade_geometry_instances[k].push_back(idata.instance_geometry);
+							}
 							mesh_visible = true;
 						}
 					}
@@ -3459,6 +3530,8 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		cull_data.occlusion_buffer = RendererSceneOcclusionCull::get_singleton()->buffer_get_ptr(p_viewport);
 		cull_data.camera_matrix = &p_camera_data->main_projection;
 		cull_data.visibility_viewport_mask = scenario->viewport_visibility_masks.has(p_viewport) ? scenario->viewport_visibility_masks[p_viewport] : 0;
+		// Reflection probes (no viewport) aren't offered to the visibility culler.
+		cull_data.use_visibility_culler = visibility_culler.is_valid() && p_viewport.is_valid();
 #ifdef DEBUG_CULL_TIME
 		uint64_t time_from = OS::get_singleton()->get_ticks_usec();
 #endif
@@ -3479,6 +3552,16 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 		} else {
 			//single threaded
 			_scene_cull(cull_data, scene_cull_result, cull_from, cull_to);
+		}
+
+		if (cull_data.use_visibility_culler) {
+			_visibility_cull_candidates(scenario, scene_cull_result.visibility_candidates, scene_cull_result.geometry_instances, VisibilityCullerExtension::PASS_CAMERA, p_viewport, RID(), 0, p_camera_data->main_transform, p_camera_data->main_projection);
+			for (uint32_t i = 0; i < cull.shadow_count; i++) {
+				for (uint32_t j = 0; j < cull.shadows[i].cascade_count; j++) {
+					const Cull::Shadow::Cascade &c = cull.shadows[i].cascades[j];
+					_visibility_cull_candidates(scenario, scene_cull_result.directional_shadows[i].cascade_visibility_candidates[j], scene_cull_result.directional_shadows[i].cascade_geometry_instances[j], VisibilityCullerExtension::PASS_DIRECTIONAL_SHADOW, p_viewport, cull.shadows[i].instance, j, c.transform, c.projection);
+				}
+			}
 		}
 
 #ifdef DEBUG_CULL_TIME
@@ -3660,7 +3743,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 			if (redraw && max_shadows_used < MAX_UPDATE_SHADOWS) {
 				//must redraw!
 				RENDER_TIMESTAMP("> Render Light3D " + itos(i));
-				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_screen_mesh_lod_threshold, p_visible_layers)) {
+				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_viewport, p_screen_mesh_lod_threshold, p_visible_layers)) {
 					light->make_shadow_dirty();
 				}
 				RENDER_TIMESTAMP("< Render Light3D " + itos(i));
@@ -4534,10 +4617,10 @@ RendererSceneCull::RendererSceneCull() {
 		render_sdfgi_data[i].instances.set_page_pool(&geometry_instance_cull_page_pool);
 	}
 
-	scene_cull_result.init(&rid_cull_page_pool, &geometry_instance_cull_page_pool, &instance_cull_page_pool);
+	scene_cull_result.init(&rid_cull_page_pool, &geometry_instance_cull_page_pool, &instance_cull_page_pool, &instance_index_cull_page_pool);
 	scene_cull_result_threads.resize(WorkerThreadPool::get_singleton()->get_thread_count());
 	for (InstanceCullResult &thread : scene_cull_result_threads) {
-		thread.init(&rid_cull_page_pool, &geometry_instance_cull_page_pool, &instance_cull_page_pool);
+		thread.init(&rid_cull_page_pool, &geometry_instance_cull_page_pool, &instance_cull_page_pool, &instance_index_cull_page_pool);
 	}
 
 	indexer_update_iterations = GLOBAL_GET("rendering/limits/spatial_indexer/update_iterations_per_frame");
